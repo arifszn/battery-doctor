@@ -345,9 +345,10 @@ function timeline(host) {
 
 /* ---------- fixes ---------- */
 function fixItem(x, n, steps) {
-  const done = doneBy[x.id];
+  // a setting the latest checkup still reports as on, after it was turned off, was changed back on the phone
+  const by = doneBy[x.id], done = by && !(x.action === 'setting' && latest.takenAt > by.at) ? by : null;
   return h('li.fix', {}, h('span.id', {}, `F${n}`),
-    h('span.t', {}, x.title, h('span.state' + (done ? '.done' : ''), {}, done ? `Done ${day(done.at)}` : x.kind === 'auto' ? 'Can be applied for you' : 'Do it on the phone')),
+    h('span.t', {}, x.title, h('span.state' + (done ? '.done' : ''), {}, done ? `Done ${day(done.at)}` : x.kind === 'auto' ? 'Assistant can apply' : 'Apply it yourself')),
     x.tradeoff ? h('span.cost', {}, `Costs: ${x.tradeoff}`) : null,
     steps?.length ? h('details', {}, h('summary', {}, 'Show the steps'), h('ol', {}, steps.map(t => h('li', {}, t)))) : null);
 }

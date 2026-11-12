@@ -164,7 +164,7 @@ test('apply, verify and undo against a fake phone', { skip: process.platform ===
 const fs = require('fs'); const st = JSON.parse(fs.readFileSync(${JSON.stringify(state)}, 'utf8'));
 const cmd = process.argv.slice(2).filter(a => a !== '-s' && a !== 'SERIAL').slice(1).join(' ');
 let m, out = '';
-if (cmd === 'pm list packages -3 --user 0') out = 'package:com.example.tracker\\npackage:com.example.video';
+if (cmd === 'pm list packages -3 --user 0') out = (st.installed || ['com.example.tracker', 'com.example.video']).map(p => 'package:' + p).join('\\n');
 else if ((m = /^cmd appops get (\\S+) RUN_ANY_IN_BACKGROUND$/.exec(cmd))) out = st.ops[m[1]] ? 'RUN_ANY_IN_BACKGROUND: ' + st.ops[m[1]] : 'No operations.\\nDefault mode: allow';
 else if ((m = /^cmd appops set (\\S+) RUN_ANY_IN_BACKGROUND (\\w+)$/.exec(cmd))) { if (m[2] === 'default') delete st.ops[m[1]]; else st.ops[m[1]] = m[2]; }
 else if ((m = /^am force-stop (\\S+)$/.exec(cmd))) st.running = st.running.filter(p => p !== m[1]);
@@ -201,4 +201,36 @@ fs.writeFileSync(${JSON.stringify(state)}, JSON.stringify(st)); console.log(out)
   assert.throws(() => undo(bin, 'SERIAL', log, a.id), /already undone/);
   assert.throws(() => undo(bin, 'SERIAL', log, c.id), /nothing to undo/);
   assert.equal(readLog(log).filter(e => e.undoneAt).length, 2);
+
+  // the same change twice is refused while the phone still has it
+  const d = apply(bin, 'SERIAL', log, 'setting', 'wifi_scan_always_enabled');
+  assert.throws(() => apply(bin, 'SERIAL', log, 'setting', 'wifi_scan_always_enabled'), /already in place/);
+  // turned back on by hand on the phone: applying again is allowed and closes the old entry
+  fs.writeFileSync(state, JSON.stringify({ ...phone(), settings: { 'global wifi_scan_always_enabled': '1' } }));
+  const e = apply(bin, 'SERIAL', log, 'setting', 'wifi_scan_always_enabled');
+  assert.equal(readLog(log).find(x => x.id === d.id).undoneBy, 'phone');
+  assert.equal(e.verified, true);
+
+  // undoing a restriction on an app that was uninstalled since does not fail
+  const f = apply(bin, 'SERIAL', log, 'restrict-background', 'com.example.video');
+  fs.writeFileSync(state, JSON.stringify({ ...phone(), installed: ['com.example.tracker'] }));
+  assert.match(undo(bin, 'SERIAL', log, f.id).note, /no longer installed/);
+});
+
+test('a period that crosses New Year keeps its timeline', () => {
+  const dumps = fakeDumps(), shifted = { ...dumps };
+  // move the 10 hours from 3 Nov 08:00 to 31 Dec 20:00, so they end on 1 Jan 06:00
+  shifted['history.txt'] = dumps['history.txt'].replace(/^(\s+)11-03 (\d\d):/gm, (_, sp, hh) => { const h = +hh + 12; return `${sp}${h >= 24 ? '01-01' : '12-31'} ${String(h % 24).padStart(2, '0')}:`; });
+  assert.notEqual(shifted['history.txt'], dumps['history.txt']);
+  const a = summarize(writeDumps(tmpDir(), dumps), AT), b = summarize(writeDumps(tmpDir(), shifted), '2027-01-01T07:00:00.000Z');
+  assert.deepEqual(b.idle, a.idle);
+  assert.deepEqual(b.levels, a.levels);
+});
+
+test('long periods and battery saver are pointed out', () => {
+  const s = summarize(writeDumps(tmpDir(), fakeDumps()), AT);
+  const ids = x => evaluate(x).map(f => f.id);
+  assert.ok(!ids(s).includes('long-period') && !ids(s).includes('battery-saver'));
+  assert.ok(ids({ ...s, window: { ...s.window, hoursOnBattery: 60 } }).includes('long-period'));
+  assert.ok(ids({ ...s, settings: { ...s.settings, low_power: '1' } }).includes('battery-saver'));
 });

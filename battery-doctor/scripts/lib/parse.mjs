@@ -22,10 +22,13 @@ function packages(read) {
   const third = new Set([...read('packages3.txt').matchAll(/package:(\S+)/g)].map(m => m[1]));
   const name = tok => {
     const m = /^u(\d+)a(\d+)$/.exec(tok);
+    // An app in a work profile or Secure Folder is a separate copy; USB access cannot list or change it.
+    if (m && +m[1] > 0) return `${uid2pkg.get(10000 + +m[2]) || tok} (other profile)`;
     if (m) return uid2pkg.get(10000 + +m[2]) || tok;
     if (tok === '1000') return 'android';
     if (tok === '0') return 'kernel';
-    return /^\d+$/.test(tok) ? (uid2pkg.get(+tok % 100000) || uid2pkg.get(+tok) || tok) : tok;
+    if (/^\d+$/.test(tok) && +tok >= 100000) return `${uid2pkg.get(+tok % 100000) || tok} (other profile)`;
+    return /^\d+$/.test(tok) ? (uid2pkg.get(+tok) || tok) : tok;
   };
   return { uid2pkg, third, name };
 }
@@ -129,7 +132,9 @@ function history(file, design) {
     if (reset) year = +reset[1];
     const m = re.exec(line);
     if (!m) continue;
-    const t = m[1] ? Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000 : dur(m[7]);
+    let t = m[1] ? Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000 : dur(m[7]);
+    // The stamps carry no year: a jump back of months means the period crossed New Year.
+    if (m[1] && last != null && t < last - 180 * 86400) { year++; t = Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000; }
     if (t0 == null) t0 = t;
     const dt = last != null ? t - last : 0;
     if (cur != null && !plug && dt > 0 && dt < 600) {
@@ -208,7 +213,8 @@ function alarms(al, upHours) {
 // Bluetooth scan time per app, counted only inside the checkup period [from, to] (phone-local seconds).
 function btScans(bt, year, from, to) {
   const tot = new Map();
-  const ts = s => { const m = /(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/.exec(s); return Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5]) / 1000; };
+  // The records carry no year: one that would lie well after the period belongs to the year before.
+  const ts = s => { const m = /(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/.exec(s); const at = y => Date.UTC(y, +m[1] - 1, +m[2], +m[3], +m[4], +m[5]) / 1000; return to != null && at(year) > to + 30 * 86400 ? at(year - 1) : at(year); };
   for (const m of bt.matchAll(/AppRecord\((\d\d-\d\d [\d:.]+) ~ (\d\d-\d\d [\d:.]+), id=\d+, appName=(\S+?)(?:\[|,)/g)) {
     const a = Math.max(ts(m[1]), from ?? -Infinity), b = Math.min(ts(m[2]), to ?? Infinity);
     if (b > a) tot.set(m[3], (tot.get(m[3]) || 0) + b - a);

@@ -24,6 +24,7 @@ Settings that can be changed:
 
 - Any app that came with the phone. Only apps the user installed can be restricted or closed.
 - Any setting outside the table.
+- Apps in a work profile or Secure Folder. The phone does not let USB access list or change them. They show as "(other profile)"; the user must check them by hand inside that profile.
 - Uninstalling, disabling, clearing data, changing permissions, restarting.
 
 If the user wants one of these, explain how to do it on the phone themselves.

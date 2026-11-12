@@ -47,11 +47,17 @@ export function note(dir, text) {
 
 export function apply(bin, serial, dir, action, target) {
   const log = readLog(dir);
-  const dup = action !== 'force-stop' && log.find(e => e.action === action && e.target === target && e.verified && !e.undoneAt);
-  if (dup) throw new Error(`This change is already in place (change ${dup.id}). Undo it first to apply it again.`);
+  // An earlier, still-active change of the same kind: refuse if the phone still has it, close it if the phone was changed back by hand.
+  const earlier = stillOn => {
+    const dup = log.find(e => e.action === action && e.target === target && e.verified && !e.undoneAt);
+    if (!dup) return;
+    if (stillOn()) throw new Error(`This change is already in place (change ${dup.id}). Undo it first to apply it again.`);
+    dup.undoneAt = new Date().toISOString(); dup.undoneBy = 'phone';
+  };
   const entry = { id: log.length + 1, at: new Date().toISOString(), action, target, previous: null, value: null, verified: false, undoneAt: null };
   if (action === 'restrict-background') {
     checkPackage(bin, serial, target);
+    earlier(() => bgMode(bin, serial, target) === 'ignore');
     entry.previous = bgMode(bin, serial, target); entry.value = 'ignore';
     run(bin, serial, `cmd appops set ${target} RUN_ANY_IN_BACKGROUND ignore`);
     entry.verified = bgMode(bin, serial, target) === 'ignore';
@@ -62,6 +68,7 @@ export function apply(bin, serial, dir, action, target) {
   } else if (action === 'setting') {
     const s = SETTINGS[target];
     if (!s) throw new Error(`"${target}" is not a setting this tool may change. Allowed: ${Object.keys(SETTINGS).join(', ')}.`);
+    earlier(() => getSetting(bin, serial, s[0], target) === s[1]);
     entry.previous = getSetting(bin, serial, s[0], target); entry.value = s[1];
     run(bin, serial, `settings put ${s[0]} ${target} ${s[1]}`);
     entry.verified = getSetting(bin, serial, s[0], target) === s[1];
@@ -76,7 +83,9 @@ export function undo(bin, serial, dir, id) {
   if (!entry) throw new Error(`No change with id ${id}.`);
   if (entry.undoneAt) throw new Error(`Change ${id} was already undone.`);
   if (entry.action === 'note') { /* a note only leaves the report */ }
-  else if (entry.action === 'restrict-background') {
+  else if (entry.action === 'restrict-background' && !run(bin, serial, 'pm list packages -3 --user 0').split('\n').some(l => l.trim() === `package:${entry.target}`)) {
+    entry.note = 'The app is no longer installed, so there was nothing to restore.';
+  } else if (entry.action === 'restrict-background') {
     const mode = entry.previous === 'default' ? 'default' : entry.previous;
     run(bin, serial, `cmd appops set ${entry.target} RUN_ANY_IN_BACKGROUND ${mode}`);
     if (bgMode(bin, serial, entry.target) === 'ignore') throw new Error('The phone still reports the app as restricted.');

@@ -33,8 +33,8 @@ function needAdb() {
 }
 
 function needDevice(bin) {
-  const list = devices(bin);
   const want = opt('serial');
+  const list = devices(bin).filter(d => want || !d.serial.startsWith('emulator-'));   // an emulator is not the user's phone
   const ready = list.filter(d => d.state === 'device' && (!want || d.serial === want));
   if (ready.length === 1) return ready[0].serial;
   if (ready.length > 1) fail(`${ready.length} phones are connected. Unplug the others or pass --serial=<one of: ${ready.map(d => d.serial).join(', ')}>.`);
@@ -141,7 +141,7 @@ const commands = {
     const q = quality(s), fl = evaluate(s);
     const same = before.filter(c => s.window?.startedAt && c.summary.window?.startedAt === s.window.startedAt).pop()?.summary;
     printSummary(s, fl, q, before.filter(c => c.summary.window?.startedAt !== s.window?.startedAt).pop()?.summary);
-    if (same) say(`\n## SAME CHARGE PERIOD as the checkup on ${same.takenAt.slice(0, 16).replace('T', ' ')} UTC\n- ${same.window.hoursOnBattery === s.window.hoursOnBattery ? 'Nothing new was measured: the phone has not been used on battery since then.' : 'This checkup covers more of the same period.'} It replaces that checkup in the report. A new period starts after the phone is charged to full.`);
+    if (same) say(`\n## SAME CHARGE PERIOD as the checkup on ${same.takenAt.slice(0, 16).replace('T', ' ')} UTC\n- ${same.window.hoursOnBattery === s.window.hoursOnBattery ? 'Nothing new was measured: the phone has not been used on battery since then.' : 'This checkup covers more of the same period.'} It replaces that checkup in the report. A new period starts once the phone is charged and used on battery again.`);
     const out = buildReport(dir);
     say(`\ncheckup folder: ${cdir}`);
     say(`report: ${out}`);
@@ -158,7 +158,8 @@ const commands = {
     const dir = pickDir(), last = loadCheckups(dir).pop();
     if (!last) fail('No checkups yet. Run "node doctor.mjs check" first.');
     const list = fixList(evaluate(last.summary), last.findings);
-    const done = new Set(readLog(dir).filter(e => e.verified && !e.undoneAt && e.action !== 'force-stop').map(e => `${e.action}:${e.target}`));
+    // a setting still reported as on after it was turned off has been changed back on the phone
+    const done = new Set(readLog(dir).filter(e => e.verified && !e.undoneAt && e.action !== 'force-stop' && !(e.action === 'setting' && last.summary.takenAt > e.at)).map(e => `${e.action}:${e.target}`));
     say(`# Fixes from the checkup of ${last.summary.takenAt.slice(0, 16).replace('T', ' ')} UTC`);
     if (!list.length) say('- None.');
     for (const x of list) {
@@ -195,7 +196,7 @@ const commands = {
     if (!ids.length || ids.some(isNaN)) fail('Usage: node doctor.mjs undo <id|all>. Run "node doctor.mjs changes" to see the ids.');
     let failed = 0;
     for (const id of ids) {
-      try { const e = undo(bin, serial, dir, id); say(e.action === 'note' ? `note ${e.id} removed: ${e.target}` : `undone ${e.id}: ${e.action} ${e.target} is back to ${e.previous}`); }
+      try { const e = undo(bin, serial, dir, id); say(e.action === 'note' ? `note ${e.id} removed: ${e.target}` : e.note ? `undone ${e.id}: ${e.note}` : `undone ${e.id}: ${e.action} ${e.target} is back to ${e.previous}`); }
       catch (err) { failed++; say(`NOT undone ${id}: ${err.message}`); }   // one failure must not block the rest
     }
     if (loadCheckups(dir).length) buildReport(dir);

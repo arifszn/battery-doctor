@@ -77,7 +77,7 @@ Apply the fixes you want. Ask for one by its number:
 /battery-doctor Apply fix F1
 ```
 
-Or do it yourself on the phone. Fixes marked "Do it on the phone" come with the steps.
+Or do it yourself on the phone. Fixes marked "Apply it yourself" come with the steps.
 
 Use the phone for a day, then check again to see whether the fixes helped:
 

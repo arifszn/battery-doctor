@@ -38,6 +38,8 @@ The script decides what is a problem. These are rules of thumb from field use on
 | `screen-time` | 70% or more of the drain happened with the screen on |
 | `battery-worn` | Battery health under 80% |
 | `hot` | Battery at 40 °C or more during the checkup |
+| `long-period` | More than 36 hours on battery, or more than 100% used, in one period. The phone has not started a new record, so the figures are averages over several days |
+| `battery-saver` | Battery saver was on at the checkup. Do not compare this checkup with one taken without it |
 | `setting:<key>` | A battery-relevant setting is on (background Bluetooth or Wi-Fi scanning, always-on display) |
 
 ## How far to trust each source

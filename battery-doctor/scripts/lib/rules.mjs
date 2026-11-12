@@ -3,6 +3,7 @@
 
 export const LIMITS = {
   minHours: 4, minDischargedPct: 15,          // below this a checkup is too short to judge
+  longPeriodHours: 36,                        // on battery longer than this: more than one day or charge in one period
   minScreenHours: 1,                          // screen-on time below this is too little to scale up to a full charge
   minIdleHours: 6,                            // screen-off time below this gives only a rough idle figure
   idleOk: 1.0, idleHigh: 2.0,                 // % of a full battery per hour with the screen off
@@ -116,6 +117,14 @@ export function evaluate(s) {
     add('screen-time', 'info', 'Most of the drain is screen time',
       `${w.dischargedScreenOnPct} of ${w.dischargedPct} percentage points went while the screen was on (${w.screenOnHours} h). Background fixes help less here than brightness, dark mode and shorter sessions.`,
       { screenOnHours: w.screenOnHours });
+
+  if (w.hoursOnBattery > LIMITS.longPeriodHours || w.dischargedPct > 100)
+    add('long-period', 'info', 'This checkup covers more than one day',
+      `It covers ${w.hoursOnBattery} h on battery and ${w.dischargedPct}% of battery used, because the phone has not started a new record since then. The figures are averages over the whole time, so one day's change is hard to see. Charge the phone to full once to start a fresh period.`,
+      { hoursOnBattery: w.hoursOnBattery, dischargedPct: w.dischargedPct });
+  if (s.settings?.low_power === '1')
+    add('battery-saver', 'info', 'Battery saver is on',
+      'It lowers the drain, so this checkup can look better than a normal day. Compare it only with other checkups taken with battery saver on.', {});
 
   const b = s.battery || {};
   if (b.healthPct != null && b.healthPct < LIMITS.healthLow)
