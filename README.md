@@ -31,29 +31,36 @@ No root, no app to install on the phone, no account.
 
 ## Installation
 
-### Claude Code (plugin marketplace)
+### Claude Code (Plugin Marketplace)
 
-```
-/plugin marketplace add arifszn/battery-doctor
-/plugin install battery-doctor
-```
+1. Register the marketplace:
 
-### Other agents
+   ```bash
+   /plugin marketplace add arifszn/battery-doctor
+   ```
 
-Paste this to your agent:
+2. Install the plugin from this marketplace:
+
+   ```bash
+   /plugin install battery-doctor
+   ```
+
+### Other agents (Codex, OpenCode, Antigravity, Gemini, Cursor, …)
+
+battery-doctor is a standalone skill that works in any agent supporting the `SKILL.md` format. See **[INSTALL.md](INSTALL.md)** for per-agent skills paths.
+
+Just tell your agent to install it. Paste:
 
 ```
 Fetch and follow the install instructions from
 https://raw.githubusercontent.com/arifszn/battery-doctor/refs/heads/main/INSTALL.md
 ```
 
-Or install with npx:
+Or install it via npx:
 
 ```bash
 npx skills add arifszn/battery-doctor
 ```
-
-Per-agent folders are in [INSTALL.md](INSTALL.md).
 
 ## Usage
 
