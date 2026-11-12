@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { evaluate, quality, screenTime, LIMITS } from './rules.mjs';
 import { readLog } from './fixes.mjs';
+import { readPlan } from './plan.mjs';
 
 export const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets');
 const json = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
@@ -26,7 +27,7 @@ export function reportData(dir) {
     return { id, ...rest, flags: evaluate(summary), quality: quality(summary), screenTime: screenTime(summary), findings: findings || {} };
   });
   if (!checkups.length) throw new Error('No checkups saved yet. Run "node doctor.mjs check" first.');
-  return { generatedAt: new Date().toISOString(), limits: LIMITS, checkups, changes: readLog(dir) };
+  return { generatedAt: new Date().toISOString(), limits: LIMITS, checkups, changes: readLog(dir), plan: readPlan(dir) };
 }
 
 export function buildReport(dir) {

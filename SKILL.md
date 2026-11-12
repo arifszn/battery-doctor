@@ -34,11 +34,13 @@ Run `status`. Act on the line that starts with `adb:` and the line that starts w
 | `phone: ... is UNAUTHORIZED` | Ask the user to unlock the phone and tap **Allow** on the "Allow USB debugging?" prompt. If they see no prompt, run `guide` and point them to its last section. |
 | `phone: READY ...` | Go to Step 2. |
 
+If the output has a `## Plan` block, read it before anything else. It says what the last session was testing, when the next checkup is due and what is still open. Tell the user in one or two lines and follow it: if the next checkup is due, go to Step 2. If it says the plan is older than the latest checkup, update it (Step 5).
+
 ## Step 2: Check
 
 Give the notice from Rule 1, then run `check`. It takes under a minute, prints a summary, saves the checkup and writes the report.
 
-Read the whole output. If it contains `SAME CHARGE PERIOD`, tell the user this checkup repeats the last one and when a new one will be useful. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
+Read the whole output. If it contains `PLAN before this checkup`, judge the result against its `Testing` line first. If it contains `SAME CHARGE PERIOD`, tell the user this checkup repeats the last one and when a new one will be useful. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
 
 ## Step 3: Explain
 
@@ -64,11 +66,14 @@ Tell the user: use the phone as usual for a day, keep it unplugged, do not resta
 
 Compare fairly. A period that includes a night drains slower than a daytime one, so say which kind each checkup covers when they differ.
 
+Then write `plan.json` (format in `battery-doctor/references/report.md`): what the next checkup tests, when and how to take it, what the user still has to decide, what is not explained yet, and which fixes they turned down and why. Run `report` so the report shows it. Update the plan after every `check`, and whenever the user decides something or changes the phone by hand.
+
 ## Other requests
 
 - "Undo that" or "put it back": run `changes` to list them, then `undo <id>` or `undo all`. A note of a hand fix cannot be reversed by the script: give the user the steps to reverse it, then run `note` for the reversal.
 - "Show the report": run `report`.
 - "Apply fix F1" (a number from the report): run `fixes` to see what that number is in the latest checkup. Confirm that exact change with the user (Rule 2), then follow Step 4.
+- "What's next?" or "What were we doing?": run `plan`.
 - "Is it better?": run `check` if the last checkup is older than the last change, otherwise read the comparison from the last `check`.
 
 ## Reference files
@@ -76,7 +81,7 @@ Compare fairly. A period that includes a night drains slower than a daytime one,
 Read each when you reach it; not all at once.
 
 - `battery-doctor/references/setup-phone.md`: turning on USB debugging, computer setup per operating system, connection problems (Step 1)
-- `battery-doctor/references/report.md`: the `findings.json` format (Step 3)
+- `battery-doctor/references/report.md`: the `findings.json` and `plan.json` formats (Steps 3 and 5)
 - `battery-doctor/references/reading-results.md`: what each number means, the thresholds, how far to trust each source (Step 3)
 - `battery-doctor/references/fixes.md`: the three allowed changes, their costs, undo (Step 4)
 - `battery-doctor/references/brands.md`: where battery settings live on each phone brand (Step 4)

@@ -136,6 +136,7 @@ node battery-doctor/scripts/doctor.mjs fixes     # list the numbered fixes
 node battery-doctor/scripts/doctor.mjs note "..." # record a change you made by hand
 node battery-doctor/scripts/doctor.mjs changes   # list changes made
 node battery-doctor/scripts/doctor.mjs undo all  # reverse them
+node battery-doctor/scripts/doctor.mjs plan      # show what the next checkup tests and what is open
 ```
 
 ## Development

@@ -44,6 +44,30 @@ Every field is optional.
 - A `tradeoff` says what the user loses. If nothing, leave it out.
 - Do not use emoji.
 
+## The plan
+
+Write `plan.json` in the phone's folder (the folder above `checkups`; `node <skill-dir>/scripts/doctor.mjs plan` prints the path). There is one plan per phone. Replace the whole file each time; every field is optional.
+
+```json
+{
+  "testing": "Maps is stopped from running in the background. The next checkup shows whether idle drain falls under 1% an hour.",
+  "nextCheckup": { "after": "14 Nov 2026", "how": "Use the phone unplugged for a normal day, do not restart it, and check before charging." },
+  "decide": ["Whether the watch connection is worth about 1% an hour while idle."],
+  "investigate": ["What wakes the phone about 1,700 times a day through app timers."],
+  "notDoing": [{ "what": "Restricting Telegram", "why": "It uses little in the background, and messages would arrive late." }]
+}
+```
+
+| Field | What it is |
+|---|---|
+| `testing` | The change the next checkup measures, and what result would show it worked. |
+| `nextCheckup` | `after`: the earliest useful date. `how`: the conditions that make the checkup comparable. |
+| `decide` | Choices the user still has to make, each with the figure it depends on. |
+| `investigate` | Causes not explained yet. |
+| `notDoing` | Fixes the user turned down or that are not worth it, with the reason, so they are not offered again. |
+
+Write it after the user picks fixes, and again after every `check`. Same writing rules as below.
+
 ## What the report shows
 
-A drawing of the phone with the screen time a full charge gives, its idle drain and battery curve, a one-sentence verdict, the fix list numbered F1, F2 and so on, two curves (screen time per charge, and idle drain against the healthy limit), a calendar with both figures on each day that has a checkup and the changes marked, and a Details section. Choosing a day in the calendar, or a checkup in the Details list, shows that checkup on the phone drawing and in the figures below it. The user can refer to a fix by its number.
+A drawing of the phone with the screen time a full charge gives, its idle drain and battery curve, a one-sentence verdict, the fix list numbered F1, F2 and so on, two curves (screen time per charge, and idle drain against the healthy limit), a calendar with both figures on each day that has a checkup and the changes marked, the plan under Next steps, and a Details section. Choosing a day in the calendar, or a checkup in the Details list, shows that checkup on the phone drawing and in the figures below it. The user can refer to a fix by its number.

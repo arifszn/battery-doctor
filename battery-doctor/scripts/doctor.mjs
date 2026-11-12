@@ -10,6 +10,7 @@
 //   node doctor.mjs note "<text>"      record a change the user made by hand, so the report marks it
 //   node doctor.mjs undo <id|all>     reverse a change
 //   node doctor.mjs changes           list changes made so far
+//   node doctor.mjs plan              show the saved plan: what the next checkup tests, when, what is open
 import fs from 'node:fs';
 import path from 'node:path';
 import { HOME, DOWNLOAD_URL, findAdb, downloadAdb, devices, shell } from './lib/adb.mjs';
@@ -18,6 +19,7 @@ import { summarize } from './lib/parse.mjs';
 import { evaluate, quality, fixList, screenTime } from './lib/rules.mjs';
 import { apply, undo, note, readLog, ACTIONS, SETTINGS } from './lib/fixes.mjs';
 import { buildReport, loadCheckups, openInBrowser, ASSETS } from './lib/report.mjs';
+import { readPlan, planFile, planLines } from './lib/plan.mjs';
 
 const [cmd, ...rest] = process.argv.slice(2);
 const flags = new Set(rest.filter(a => a.startsWith('--')));
@@ -100,21 +102,37 @@ function pickDir() {
   fail(dirs.length ? `Several phones have checkups. Pass --dir=<one of: ${dirs.join(', ')}>.` : 'No checkups yet. Run "node doctor.mjs check" first.');
 }
 
+// The phone's plan, printed so a new session starts from it.
+function printPlan(dir) {
+  const plan = readPlan(dir);
+  if (!plan) return false;
+  say(`\n## Plan (${planFile(dir)})`);
+  planLines(plan).forEach(l => say(l));
+  const last = loadCheckups(dir).pop()?.summary.takenAt;
+  if (last && last > plan.updatedAt) say('- The latest checkup is newer than this plan. Update the plan.');
+  return true;
+}
+function savedPlans() {
+  if (!fs.existsSync(HOME)) return;
+  for (const n of fs.readdirSync(HOME)) { const d = path.join(HOME, n); if (fs.existsSync(path.join(d, 'checkups'))) printPlan(d); }
+}
+
 const commands = {
   status() {
     const bin = findAdb();
     say(`node: ${process.version}`);
     say(`data folder: ${HOME}`);
-    if (!bin) { say('adb: NOT INSTALLED'); say(`next: ask the user, then run "node doctor.mjs get-adb" (downloads ${DOWNLOAD_URL})`); return; }
+    if (!bin) { say('adb: NOT INSTALLED'); say(`next: ask the user, then run "node doctor.mjs get-adb" (downloads ${DOWNLOAD_URL})`); return savedPlans(); }
     say(`adb: ${bin}`);
     const list = devices(bin);
-    if (!list.length) { say('phone: NOT FOUND'); say('next: run "node doctor.mjs guide" to show the user the picture guide, and follow references/setup-phone.md'); return; }
+    if (!list.length) { say('phone: NOT FOUND'); say('next: run "node doctor.mjs guide" to show the user the picture guide, and follow references/setup-phone.md'); return savedPlans(); }
     for (const d of list) {
       if (d.state !== 'device') { say(`phone: ${d.serial} is ${d.state.toUpperCase()}`); say('next: unlock the phone and tap Allow on the USB debugging prompt'); continue; }
       const p = k => shell(bin, d.serial, `getprop ${k}`).out.trim();
       say(`phone: READY ${p('ro.product.manufacturer')} ${p('ro.product.model')}, Android ${p('ro.build.version.release')} (serial ${d.serial})`);
       const dir = deviceDir(bin, d.serial);
       say(`checkups saved: ${loadCheckups(dir).length}, changes made: ${readLog(dir).filter(e => !e.undoneAt).length}`);
+      printPlan(dir);
     }
   },
 
@@ -142,6 +160,8 @@ const commands = {
     const same = before.filter(c => s.window?.startedAt && c.summary.window?.startedAt === s.window.startedAt).pop()?.summary;
     printSummary(s, fl, q, before.filter(c => c.summary.window?.startedAt !== s.window?.startedAt).pop()?.summary);
     if (same) say(`\n## SAME CHARGE PERIOD as the checkup on ${same.takenAt.slice(0, 16).replace('T', ' ')} UTC\n- ${same.window.hoursOnBattery === s.window.hoursOnBattery ? 'Nothing new was measured: the phone has not been used on battery since then.' : 'This checkup covers more of the same period.'} It replaces that checkup in the report. A new period starts once the phone is charged and used on battery again.`);
+    const plan = readPlan(dir);
+    if (plan) { say('\n## PLAN before this checkup'); planLines(plan).forEach(l => say(l)); say(`- Update ${planFile(dir)} with what comes next (format in references/report.md).`); }
     const out = buildReport(dir);
     say(`\ncheckup folder: ${cdir}`);
     say(`report: ${out}`);
@@ -203,6 +223,11 @@ const commands = {
     if (failed) process.exitCode = 1;
   },
 
+  plan() {
+    const dir = pickDir();
+    if (!printPlan(dir)) say(`No plan saved. Write ${planFile(dir)} (format in references/report.md).`);
+  },
+
   changes() {
     const log = readLog(pickDir());
     if (!log.length) return say('No changes have been made to this phone.');
@@ -210,5 +235,5 @@ const commands = {
   },
 };
 
-if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 12).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
+if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 13).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
 try { await commands[cmd](); } catch (e) { fail(e.message); }

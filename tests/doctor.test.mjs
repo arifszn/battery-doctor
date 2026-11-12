@@ -16,6 +16,7 @@ const { evaluate, quality, fixList, screenTime } = await import('../battery-doct
 const { buildReport, reportData } = await import('../battery-doctor/scripts/lib/report.mjs');
 const { apply, undo, note, readLog } = await import('../battery-doctor/scripts/lib/fixes.mjs');
 const { unzip } = await import('../battery-doctor/scripts/lib/adb.mjs');
+const { readPlan } = await import('../battery-doctor/scripts/lib/plan.mjs');
 
 const AT = '2026-11-03T12:00:00.000Z';
 
@@ -148,6 +149,30 @@ test('a note records a hand fix without a phone, and undo removes it', () => {
   assert.throws(() => note(dir, '   '));
   assert.ok(undo(null, null, dir, e.id).undoneAt);
   assert.equal(readLog(dir).length, 1);
+});
+
+test('the plan is read from the phone folder, cleaned, shown without a phone and escaped in the report', () => {
+  const dir = path.join(home, 'plan-phone');
+  seed(dir, '2026-11-03T12-00-00', { idleMa: 150 });
+  const doctor = (...a) => spawnSync(process.execPath, [path.join(scripts, 'doctor.mjs'), ...a, `--dir=${dir}`], { encoding: 'utf8', env: { ...process.env, ADB: 'no-such-adb' } });
+  assert.match(doctor('plan').stdout, /No plan saved/);
+  assert.equal(reportData(dir).plan, null);
+  fs.writeFileSync(path.join(dir, 'plan.json'), '{ not json');
+  assert.equal(readPlan(dir), null, 'a broken plan never stops a checkup');
+  fs.writeFileSync(path.join(dir, 'plan.json'), JSON.stringify({
+    testing: 'Maps <b>stopped</b>\nin the background', nextCheckup: { after: '14 Nov 2026' },
+    decide: ['Keep the watch?', 42, ''], notDoing: [{ what: 'Restricting Telegram', why: 'messages arrive late' }, { why: 'no what' }],
+  }));
+  const p = readPlan(dir);
+  assert.equal(p.testing, 'Maps <b>stopped</b> in the background');
+  assert.deepEqual([p.nextCheckup, p.decide, p.investigate, p.notDoing.length], [{ after: '14 Nov 2026', how: null }, ['Keep the watch?'], [], 1]);
+  const r = doctor('plan');
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /Testing: Maps <b>stopped<\/b> in the background/);
+  assert.match(r.stdout, /Next checkup: after 14 Nov 2026/);
+  assert.match(r.stdout, /Not doing: Restricting Telegram \(messages arrive late\)/);
+  const html = fs.readFileSync(buildReport(dir), 'utf8');
+  assert.ok(html.includes('\\u003cb>stopped'), 'plan text must not be able to close the script tag');
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {

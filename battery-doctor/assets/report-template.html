@@ -40,6 +40,16 @@
 .focus summary:hover { color: var(--panel-ink); }
 .focus :focus-visible { outline-color: var(--panel-ink); }
 
+/* the plan: what the next checkup tests and what is still open */
+.plan { margin-top: 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 4px 24px; }
+.plan > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 20px; padding: 16px 0; border-top: 1px solid var(--line); }
+.plan > div:first-child { border-top: 0; }
+.plan h3 { font: 600 var(--t3)/1.6 var(--font); color: var(--muted); margin: 0; }
+.plan ul { display: grid; gap: 6px; }
+.plan .why { display: block; font-size: var(--t3); color: var(--muted); }
+.plan-at { margin-top: 10px; font-size: var(--t3); color: var(--muted); }
+@media (max-width: 560px) { .plan { padding: 4px 16px; } .plan > div { grid-template-columns: minmax(0, 1fr); } }
+
 /* details as cards: two wide cards, then pairs */
 .more-in { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .more-in > section { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 20px 20px 12px; min-width: 0; }
@@ -426,6 +436,22 @@ function fixes() {
   ];
 }
 
+/* ---------- plan ---------- */
+// written by the assistant: text nodes only
+function planBlock() {
+  const p = D.plan; if (!p) return null;
+  const nc = p.nextCheckup, row = (t, items) => items.length ? h('div', {}, h('h3', {}, t), h('ul', {}, items.map(x => h('li', {}, ...[].concat(x))))) : null;
+  return [
+    h('div.plan', {},
+      row('Testing now', p.testing ? [p.testing] : []),
+      row('Next checkup', nc ? [[nc.after ? `After ${nc.after}` : null, nc.after && nc.how ? '. ' : null, nc.how].filter(Boolean).join('')] : []),
+      row('To decide', p.decide),
+      row('To look into', p.investigate),
+      row('Not doing', p.notDoing.map(x => [x.what, x.why ? h('span.why', {}, x.why) : null]))),
+    h('p.plan-at', {}, `Written ${dayTime(p.updatedAt)}${latest.takenAt > p.updatedAt ? ', before the latest checkup' : ''}.`),
+  ];
+}
+
 /* ---------- details ---------- */
 function rows(list, none) {
   if (!list.length) return h('p.sub', {}, none);
@@ -513,6 +539,7 @@ function readColumn() {
     h('div.hero', {}, h('h1', {}, verdict()), line ? h('p.line', {}, line) : null,
       latest.quality?.ok === false ? h('p.notice', { role: 'note' }, (latest.quality.reasons || []).join(' ')) : null),
     h('section.sec.focus', { 'aria-labelledby': 'h-fx' }, h('h2', { id: 'h-fx' }, 'What to fix next'), ...fixes()),
+    D.plan ? h('section.sec', { 'aria-labelledby': 'h-pl' }, h('h2', { id: 'h-pl' }, 'Next steps'), ...planBlock()) : null,
     trend ? h('section.sec', { 'aria-labelledby': 'h-tl' }, h('h2', { id: 'h-tl' }, 'Day by day'), trendBox) : null,
     more].filter(Boolean));
   window.__tl = trendBox;
