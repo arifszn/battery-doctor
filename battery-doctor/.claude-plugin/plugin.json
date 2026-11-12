@@ -1,6 +1,6 @@
 {
   "name": "battery-doctor",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Finds what drains an Android phone's battery, fixes it, and shows whether it got better. Investigates the phone's own battery records over USB: what woke it, which apps ran in the background or kept a sensor, Bluetooth scan or location request going, and how fast it drains with the screen off. Applies reversible fixes only after you confirm each one, and compares each checkup with the last in an HTML report.",
   "license": "MIT",
   "author": {
