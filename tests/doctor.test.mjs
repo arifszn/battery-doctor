@@ -14,7 +14,8 @@ process.env.BATTERY_DOCTOR_HOME = home;       // must be set before the modules 
 const { summarize, dur } = await import('../battery-doctor/scripts/lib/parse.mjs');
 const { evaluate, quality, fixList, screenTime } = await import('../battery-doctor/scripts/lib/rules.mjs');
 const { buildReport, reportData } = await import('../battery-doctor/scripts/lib/report.mjs');
-const { apply, undo, note, readLog } = await import('../battery-doctor/scripts/lib/fixes.mjs');
+const { apply, undo, note, readLog, recordPhoneChanges } = await import('../battery-doctor/scripts/lib/fixes.mjs');
+const { sameHours, phoneChanges } = await import('../battery-doctor/scripts/lib/compare.mjs');
 const { unzip } = await import('../battery-doctor/scripts/lib/adb.mjs');
 const { readPlan } = await import('../battery-doctor/scripts/lib/plan.mjs');
 
@@ -117,6 +118,7 @@ test('report is one self-contained file built from every checkup', () => {
   const html = fs.readFileSync(buildReport(dir), 'utf8');
   assert.ok(!html.includes('__REPORT_DATA__') && !html.includes('__FONT_BASE64__'));
   assert.ok(html.includes('\\u003cb>halved'), 'agent text must not be able to close the script tag');
+  assert.ok(html.includes('Copy "Apply fix ${label}"') && !/fetch\(|XMLHttpRequest|WebSocket/.test(html), 'fix buttons only copy a request; the page sends nothing anywhere');
   const external = [...html.matchAll(/(?:src|href)\s*=\s*["']?(https?:[^"'\s>]+)/g)].map(m => m[1]);
   assert.deepEqual(external, [], 'the report must not load anything from the network');
   assert.ok(!/url\(\s*["']?https?:/.test(html));
@@ -173,6 +175,59 @@ test('the plan is read from the phone folder, cleaned, shown without a phone and
   assert.match(r.stdout, /Not doing: Restricting Telegram \(messages arrive late\)/);
   const html = fs.readFileSync(buildReport(dir), 'utf8');
   assert.ok(html.includes('\\u003cb>stopped'), 'plan text must not be able to close the script tag');
+});
+
+test('screen-off time is split by hour of the day, and two checkups compare over the hours both cover', () => {
+  for (const style of ['samsung', 'aosp']) {
+    const s = summarize(writeDumps(tmpDir(), fakeDumps({ style, idleMa: 150 })), AT);
+    const off = s.offByHour.reduce((t, h) => t + h[0], 0) / 3600;
+    assert.ok(Math.abs(off - 6) < 0.1, `${style}: 6 h screen off, got ${off}`);
+    assert.deepEqual(s.offByHour.map((h, i) => h[0] ? i : null).filter(x => x != null), [8, 9, 10, 11, 12, 13], `${style}: screen off 08:00-14:00`);
+  }
+  const before = summarize(writeDumps(tmpDir(), fakeDumps({ idleMa: 150 })), AT);
+  const after = summarize(writeDumps(tmpDir(), fakeDumps({ idleMa: 60 })), AT);
+  const c = sameHours(before, after);
+  assert.equal(c.label, '08:00-14:00');
+  assert.deepEqual([c.before, c.after, c.method], [3, 1.2, 'measured current']);
+  const pct = sameHours(...['aosp', 'aosp'].map((style, i) => summarize(writeDumps(tmpDir(), fakeDumps({ style, idleMa: [150, 60][i] })), AT)));
+  assert.equal(pct.method, 'percent while screen off');
+  assert.ok(pct.before > pct.after);
+  const short = summarize(writeDumps(tmpDir(), fakeDumps({ hours: 6, screenOnHours: 4 })), AT);   // 2 h screen off
+  assert.equal(sameHours(before, short), null, 'too few shared hours is no comparison');
+  assert.equal(sameHours({ ...before, offByHour: undefined }, after), null);
+});
+
+test('changes made on the phone between checkups are found, and the ones this tool made are left out', () => {
+  const at = (s, iso) => ({ ...s, takenAt: iso });
+  const a = at(summarize(writeDumps(tmpDir(), fakeDumps({ bleScan: '1', background: [] })), AT), '2026-11-03T12:00:00.000Z');
+  const b = at(summarize(writeDumps(tmpDir(), fakeDumps({ bleScan: '0', background: ['com.example.chat', 'com.google.android.gms'], restricted: ['com.example.tracker'] })), AT), '2026-11-04T12:00:00.000Z');
+  assert.deepEqual(b.restrictions, { background: ['com.example.chat'], restricted: ['com.example.tracker'] }, 'system apps are left out');
+  const found = phoneChanges(a, b, [], p => ({ 'com.example.chat': 'Chat' })[p] || p);
+  assert.deepEqual(found.map(x => x.text), [
+    'Background Bluetooth scanning was turned off',
+    'Chat was stopped from running in the background',
+    'com.example.tracker was put in deep sleep, or restricted by Android as rarely used']);
+  const quiet = { ...b, restrictions: { ...b.restrictions, restricted: ['com.example.tracker', 'com.example.unused'] } };
+  assert.ok(!phoneChanges(a, quiet, []).some(x => x.target === 'com.example.unused'), 'an app absent from the battery figures moving into the restricted group is not reported');
+  const byTool = [{ at: '2026-11-04T09:00:00.000Z', action: 'setting', target: 'ble_scan_always_enabled' }, { at: '2026-11-02T09:00:00.000Z', action: 'restrict-background', target: 'com.example.chat' }];
+  assert.deepEqual(phoneChanges(a, b, byTool).map(x => x.key), ['background:com.example.chat:on', 'restricted:com.example.tracker:on'], 'a change logged between the checkups explains itself; an older one does not');
+  assert.deepEqual(phoneChanges(a, { ...b, restrictions: null }, []).length, 1, 'no restriction data, only settings compared');
+  const dir = path.join(home, 'phone-change'); fs.mkdirSync(dir, { recursive: true });
+  assert.equal(recordPhoneChanges(dir, found, b.takenAt).length, 3);
+  assert.equal(recordPhoneChanges(dir, found, b.takenAt).length, 0, 'the same finding is logged once');
+  const e = readLog(dir)[0];
+  assert.deepEqual([e.action, e.at, e.verified], ['phone', b.takenAt, true]);
+  assert.ok(undo(null, null, dir, e.id).undoneAt, 'a finding is a record and can be removed without a phone');
+});
+
+test('a checkup saved by an older version is read again from its raw dumps', () => {
+  const dir = path.join(home, 'old-phone');
+  seed(dir, '2026-11-03T12-00-00', { idleMa: 150 });
+  const file = path.join(dir, 'checkups', '2026-11-03T12-00-00', 'summary.json');
+  const { offByHour, restrictions, ...old } = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({ ...old, version: 1 }));
+  assert.ok(reportData(dir).checkups[0].offByHour);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 3);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {

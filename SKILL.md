@@ -40,7 +40,7 @@ If the output has a `## Plan` block, read it before anything else. It says what 
 
 Give the notice from Rule 1, then run `check`. It takes under a minute, prints a summary, saves the checkup and writes the report.
 
-Read the whole output. If it contains `PLAN before this checkup`, judge the result against its `Testing` line first. If it contains `SAME CHARGE PERIOD`, tell the user this checkup repeats the last one and when a new one will be useful. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
+Read the whole output. If it contains `PLAN before this checkup`, judge the result against its `Testing` line first. If it contains `CHANGED ON THE PHONE`, tell the user what changed and ask whether they did it; each change is already logged and marked in the report, so do not run `note` for it. If it contains `SAME CHARGE PERIOD`, tell the user this checkup repeats the last one and when a new one will be useful. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
 
 ## Step 3: Explain
 
@@ -64,7 +64,7 @@ Details of each action and how to undo: `battery-doctor/references/fixes.md`.
 
 Tell the user: use the phone as usual for a day, keep it unplugged, do not restart it, and come back before charging. When they return, run `check` again. The output compares the new checkup with the previous one, and the report shows every checkup on a calendar with the changes marked.
 
-Compare fairly. A period that includes a night drains slower than a daytime one, so say which kind each checkup covers when they differ.
+Compare fairly. A period that includes a night drains slower than a daytime one. When the comparison has a `Same hours of the day` figure, give that one as the result and name the hours; otherwise say which kind of period each checkup covers when they differ.
 
 Then write `plan.json` (format in `battery-doctor/references/report.md`): what the next checkup tests, when and how to take it, what the user still has to decide, what is not explained yet, and which fixes they turned down and why. Run `report` so the report shows it. Update the plan after every `check`, and whenever the user decides something or changes the phone by hand.
 
@@ -72,7 +72,7 @@ Then write `plan.json` (format in `battery-doctor/references/report.md`): what t
 
 - "Undo that" or "put it back": run `changes` to list them, then `undo <id>` or `undo all`. A note of a hand fix cannot be reversed by the script: give the user the steps to reverse it, then run `note` for the reversal.
 - "Show the report": run `report`.
-- "Apply fix F1" (a number from the report): run `fixes` to see what that number is in the latest checkup. Confirm that exact change with the user (Rule 2), then follow Step 4.
+- "Apply fix F1" (a number from the report; its copy button adds the fix's title in brackets): run `fixes` to see what that number is in the latest checkup. If the title differs, the report is older than the latest checkup: say so and go by the `fixes` list. Confirm that exact change with the user (Rule 2), then follow Step 4.
 - "What's next?" or "What were we doing?": run `plan`.
 - "Is it better?": run `check` if the last checkup is older than the last change, otherwise read the comparison from the last `check`.
 

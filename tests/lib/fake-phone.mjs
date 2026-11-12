@@ -6,7 +6,7 @@ import path from 'node:path';
 const pad = n => String(n).padStart(2, '0');
 
 // style: 'samsung' (absolute timestamps, current= samples) or 'aosp' (relative timestamps, no current)
-export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hours = 10, screenOnHours = 4, start = '2026-11-03-08-00-00' } = {}) {
+export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hours = 10, screenOnHours = 4, start = '2026-11-03-08-00-00', bleScan = '1', background = [], restricted = [] } = {}) {
   const offHours = hours - screenOnHours;
   const hist = ['Battery History [Format: 2] (1% used):'];
   const stamp = sec => style === 'samsung'
@@ -73,7 +73,9 @@ export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hou
     'packages3.txt': 'package:com.example.video\npackage:com.example.tracker\npackage:com.example.chat\n',
     'uptime.txt': '108000.00 90000.00\n',
     'props.txt': `ro.product.manufacturer=${style === 'samsung' ? 'samsung' : 'Google'}\nro.product.brand=${style === 'samsung' ? 'samsung' : 'google'}\nro.product.model=${style === 'samsung' ? 'SM-TEST' : 'Pixel Test'}\nro.build.version.release=16\nro.build.version.sdk=36\n`,
-    'settings.txt': 'global ble_scan_always_enabled=1\nglobal wifi_scan_always_enabled=0\nsecure doze_always_on=null\nglobal low_power=0\n',
+    'settings.txt': `global ble_scan_always_enabled=${bleScan}\nglobal wifi_scan_always_enabled=0\nsecure doze_always_on=null\nglobal low_power=0\n`,
+    'bgrestricted.txt': background.length ? background.join('\n') + '\n' : 'No operations.\n',
+    'standby.txt': ['com.example.video', 'com.example.tracker', 'com.example.chat', 'com.google.android.gms'].map(p => `${p}: ${restricted.includes(p) ? 45 : 10}`).join('\n') + '\n',
   };
 }
 

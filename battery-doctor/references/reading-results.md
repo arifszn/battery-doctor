@@ -67,6 +67,7 @@ The script decides what is a problem. These are rules of thumb from field use on
 
 - Lead with screen time from a full charge: "about 5 hours, up from 4". It is the result the user feels.
 - Then check idle drain. It depends least on how much the phone was used, so it shows whether a fix worked. If screen time rose but idle drain did not fall, the day was different, not the phone; say so.
-- A period that includes a night idles lower than a daytime period, because most apps go quiet. If the screen-off hours differ a lot between two checkups, say that the comparison is rough.
+- A period that includes a night idles lower than a daytime period, because most apps go quiet. `check` therefore also compares idle drain over only the hours of the day both checkups cover, with at least 20 minutes of screen-off time in each hour and 3 hours in total (`Same hours of the day`). Use that figure when it is there. Without it, if the screen-off hours differ a lot between two checkups, say that the comparison is rough.
+- `CHANGED ON THE PHONE` lists differences between this checkup and the one before that this tool did not make: the three settings it can change, apps stopped from running in the background, and apps that show up in the battery figures moving into or out of Android's restricted group. The restricted group holds apps in Samsung's deep sleep and apps Android itself restricts for being rarely used, so a move there is not always the user's doing. Each change is logged with the new checkup's time: it happened at some point since the checkup before.
 - "A full charge lasts" moves with usage. A longer figure after a light day is not an improvement.
 - One checkup after a change is one data point. Recommend a second if the result is close.

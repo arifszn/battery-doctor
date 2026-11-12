@@ -51,6 +51,18 @@ function settings(read) {
   return o;
 }
 
+// Apps the user can hold back: stopped from running in the background, or in Android's restricted group
+// (Samsung's deep sleep, or Android restricting an app that is rarely used). Third-party apps only.
+function restrictions(read, third) {
+  const bg = read('bgrestricted.txt'), sb = read('standby.txt');
+  if (!bg.trim() && !sb.trim()) return null;   // older checkups and phones that refuse both
+  const ok = p => third.has(p);
+  return {
+    background: bg.split('\n').map(l => l.trim()).filter(l => /^[\w.]+$/.test(l) && ok(l)).sort(),
+    restricted: [...sb.matchAll(/^\s*([\w.]+): (\d+)\s*$/gm)].filter(m => +m[2] === 45 && ok(m[1])).map(m => m[1]).sort(),
+  };
+}
+
 function battery(bat, bs) {
   const num = re => { const m = re.exec(bat); return m ? +m[1] : null; };
   const level = num(/\n\s*level: (\d+)/), scale = num(/\n\s*scale: (\d+)/) || 100;
@@ -126,21 +138,28 @@ function history(file, design) {
   const add = (k, dt, cur) => { const a = acc.get(k) || [0, 0]; a[0] += dt; a[1] += dt * cur; acc.set(k, a); };
   const levels = [], screens = [];
   let scr = false, top = null, cur = null, last = null, plug = false, recharged = false, t0 = null, lastLevel = null, scrStart = null, year = new Date().getFullYear(), samples = 0;
+  // Screen-off time per hour of the day (phone clock): [seconds, mA·seconds measured, % of battery dropped, seconds with a current reading].
+  // Absolute stamps are the phone clock already; relative ones count from the RESET:TIME line.
+  const byHour = Array.from({ length: 24 }, () => [0, 0, 0, 0]);
+  let resetClock = null, relative = false;
+  const hourOf = t => { const c = relative ? (resetClock == null ? null : resetClock + t) : t; return c == null ? null : Math.floor(((c % 86400) + 86400) % 86400 / HOUR); };
   const re = /^\s+(?:(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\.(\d+)|\+?((?:\d+(?:ms|[dhms]))+))\s+(?:\(\d+\)\s+)?(\d{3})(?:\s|$)(.*)/;
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const reset = /RESET:TIME: (\d{4})-/.exec(line);
-    if (reset) year = +reset[1];
+    const reset = /RESET:TIME: (\d{4})-(\d\d)-(\d\d)-(\d\d)-(\d\d)-(\d\d)/.exec(line);
+    if (reset) { year = +reset[1]; resetClock = Date.UTC(year, +reset[2] - 1, +reset[3], +reset[4], +reset[5], +reset[6]) / 1000; }
     const m = re.exec(line);
     if (!m) continue;
     let t = m[1] ? Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000 : dur(m[7]);
     // The stamps carry no year: a jump back of months means the period crossed New Year.
     if (m[1] && last != null && t < last - 180 * 86400) { year++; t = Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000; }
-    if (t0 == null) t0 = t;
+    if (t0 == null) { t0 = t; relative = !m[1]; }
     const dt = last != null ? t - last : 0;
     if (cur != null && !plug && dt > 0 && dt < 600) {
       add(scr ? 'on' : 'off', dt, cur);
       if (scr && top) add('app:' + top, dt, cur);
     }
+    const hr = last != null ? hourOf(last) : null;
+    if (hr != null && !scr && !plug && !recharged && dt > 0 && dt < 600) { byHour[hr][0] += dt; if (cur != null) { byHour[hr][1] += dt * cur; byHour[hr][3] += dt; } }
     last = t;
     const rest = m[9], level = +m[8];
     const c = /\bcurrent=(-?\d+)/.exec(rest);
@@ -151,7 +170,10 @@ function history(file, design) {
     if (/(^|\s)-screen(\s|$)/.test(rest) && scr) { scr = false; if (scrStart != null) screens.push([round((scrStart - t0) / HOUR, 2), round((t - t0) / HOUR, 2)]); }
     const tp = /\+top=\w+:"([^"]+)"/.exec(rest);
     if (tp) top = tp[1];
-    if (level !== lastLevel && !plug && !recharged) { levels.push([round((t - t0) / HOUR, 2), level]); lastLevel = level; }
+    if (level !== lastLevel && !plug && !recharged) {
+      if (lastLevel != null && level < lastLevel && !scr) { const h2 = hourOf(t); if (h2 != null) byHour[h2][2] += lastLevel - level; }
+      levels.push([round((t - t0) / HOUR, 2), level]); lastLevel = level;
+    }
   }
   if (t0 == null) return null;
   if (scr && scrStart != null) screens.push([round((scrStart - t0) / HOUR, 2), round((last - t0) / HOUR, 2)]);
@@ -165,6 +187,7 @@ function history(file, design) {
     hasCurrent: samples > 20, screenOn: avg('on'), screenOff: avg('off'), apps,
     levels: levels.filter((_, i) => i % step === 0 || i === levels.length - 1), screenSpans: screens.filter(s => s[1] - s[0] >= 0.02),
     spanHours: round((last - t0) / HOUR), designMah: design,
+    offByHour: byHour.map(([s, mas, pct, sc]) => [Math.round(s), samples > 20 ? Math.round(mas) : null, pct, Math.round(sc)]),
   };
 }
 
@@ -265,11 +288,11 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   else if (w?.dischargedScreenOnPct != null && w.screenOnHours >= 0.5) active = { pctPerHour: round(w.dischargedScreenOnPct / w.screenOnHours, 1), ma: null, hours: w.screenOnHours };
 
   return {
-    version: 1, takenAt, device: device(read), battery: b, window: w,
+    version: 3, takenAt, device: device(read), battery: b, window: w,
     rebootedInWindow: upHours != null && w ? upHours < w.hoursOnBattery - 0.2 : null, uptimeHours: round(upHours),
     hoursPerCharge: w?.dischargedPct >= 5 ? round(w.hoursOnBattery / w.dischargedPct * 100) : null,
     idle, active,
-    levels: h?.levels || [], screenSpans: h?.screenSpans || [],
+    levels: h?.levels || [], screenSpans: h?.screenSpans || [], offByHour: h?.offByHour || null,
     screenApps: h?.apps?.length ? h.apps : null,
     estimatedApps: safe(() => estimatedApps(bs, pk)) || [],
     wakeups: safe(() => wakeups(bs)) || [],
@@ -279,6 +302,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
     sensors: safe(() => sensors(read('sensor.txt'), pk)) || [],
     location: safe(() => location(read('loc.txt'), pk)) || [],
     settings: settings(read),
+    restrictions: safe(() => restrictions(read, pk.third)),
     thirdPartyApps: [...pk.third].sort(),
   };
 }

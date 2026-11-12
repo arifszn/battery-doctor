@@ -17,6 +17,8 @@ export const DUMPS = {
   'packages3.txt': 'pm list packages -3 --user 0',
   'uptime.txt': 'cat /proc/uptime',
   'props.txt': 'for p in ro.product.manufacturer ro.product.brand ro.product.model ro.build.version.release ro.build.version.sdk; do echo "$p=$(getprop $p)"; done',
+  'bgrestricted.txt': 'cmd appops query-op --user 0 RUN_ANY_IN_BACKGROUND ignore',
+  'standby.txt': 'am get-standby-bucket --user 0',
   'settings.txt': 'for k in "global ble_scan_always_enabled" "global wifi_scan_always_enabled" "secure doze_always_on" "global low_power"; do echo "$k=$(settings get $k)"; done',
 };
 

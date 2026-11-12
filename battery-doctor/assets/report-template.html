@@ -41,13 +41,13 @@
 .focus :focus-visible { outline-color: var(--panel-ink); }
 
 /* the plan: what the next checkup tests and what is still open */
-.plan { margin-top: 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 4px 24px; }
+.plan { margin-top: 16px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 4px 24px; }
 .plan > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 20px; padding: 16px 0; border-top: 1px solid var(--line); }
 .plan > div:first-child { border-top: 0; }
 .plan h3 { font: 600 var(--t3)/1.6 var(--font); color: var(--muted); margin: 0; }
 .plan ul { display: grid; gap: 6px; }
 .plan .why { display: block; font-size: var(--t3); color: var(--muted); }
-.plan-at { margin-top: 10px; font-size: var(--t3); color: var(--muted); }
+.plan-at { margin-top: 4px; font-size: var(--t3); color: var(--muted); }
 @media (max-width: 560px) { .plan { padding: 4px 16px; } .plan > div { grid-template-columns: minmax(0, 1fr); } }
 
 /* details as cards: two wide cards, then pairs */
@@ -101,6 +101,12 @@ h2 { font-weight: 600; font-size: var(--h2); line-height: 1.25; letter-spacing: 
 .state { display: table; margin: 8px 0 2px; font-size: 13px; font-weight: 500; line-height: 24px; padding: 0 10px; border-radius: var(--pill-r, 999px); background: var(--chip); color: var(--chip-ink, inherit); white-space: nowrap; }
 .state.done { background: var(--done); color: var(--done-ink); }
 .fix details { grid-column: 2; font-size: var(--t3); }
+.fix .row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.fix .row .state { margin: 0; }
+.copy { width: 26px; height: 26px; display: inline-grid; place-items: center; border-radius: 6px; color: var(--panel-muted, var(--muted)); transition: background-color .12s ease, color .12s ease; }
+.copy:hover { background: var(--chip); color: var(--panel-ink, var(--ink)); }
+.copy svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.copied { font-size: 12px; color: var(--panel-muted, var(--muted)); opacity: .75; }
 .fix summary, .more > summary { cursor: pointer; color: var(--panel-muted, var(--muted)); text-decoration: underline; text-underline-offset: 4px; }
 .fix summary:hover { color: var(--panel-ink, var(--ink)); }
 .fix ol { list-style: decimal; padding-left: 20px; margin-top: 8px; display: grid; gap: 4px; }
@@ -160,7 +166,7 @@ h2 { font-weight: 600; font-size: var(--h2); line-height: 1.25; letter-spacing: 
 .more h3 { font: 600 var(--t2)/1.3 var(--font); margin: 0 0 8px; }
 .more .sub { color: var(--muted); font-size: var(--t3); margin-bottom: 10px; }
 .rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; padding: 9px 0; border-top: 1px solid var(--line); }
-.rows .n { overflow-wrap: anywhere; }
+.rows .n { overflow-wrap: break-word; min-width: 0; }
 .rows .f { white-space: nowrap; text-align: right; font-family: var(--font-num, var(--font)); }
 .rows .f small { color: var(--muted); margin-left: 8px; font-family: var(--font); }
 .rows .gone { text-decoration: line-through; color: var(--muted); }
@@ -238,7 +244,7 @@ const tidy = t => String(t).replace(/[\w.]+\.[\w.]+/g, m => app(m));
 const live = D.changes.filter(c => !c.undoneAt);
 const fixKey = c => `${c.action}:${c.target}`;
 const doneBy = Object.fromEntries(live.filter(c => c.action !== 'force-stop').map(c => [fixKey(c), c]));   // a closed app can be running again
-const changeText = c => c.action === 'note' ? c.target : c.action === 'restrict-background' ? `${app(c.target)} stopped from running in the background`
+const changeText = c => c.action === 'note' ? c.target : c.action === 'phone' ? tidy(c.target) : c.action === 'restrict-background' ? `${app(c.target)} stopped from running in the background`
   : c.action === 'force-stop' ? `${app(c.target)} closed`
   : ({ ble_scan_always_enabled: 'Background Bluetooth scanning turned off', wifi_scan_always_enabled: 'Background Wi-Fi scanning turned off', doze_always_on: 'Always-on display turned off' })[c.target] || `${c.target} set to ${c.value}`;
 // markers on the timeline: only changes the phone confirmed and that last (closing an app does not)
@@ -411,9 +417,28 @@ function fixItem(x, n, steps) {
   // a setting the latest checkup still reports as on, after it was turned off, was changed back on the phone
   const by = doneBy[x.id], done = by && !(x.action === 'setting' && latest.takenAt > by.at) ? by : null;
   return h('li.fix', {}, h('span.id', {}, `F${n}`),
-    h('span.t', {}, x.title, h('span.state' + (done ? '.done' : ''), {}, done ? `Done ${day(done.at)}` : x.kind === 'auto' ? 'Assistant can apply' : 'Apply it yourself')),
+    h('span.t', {}, x.title, h('span.row', {}, h('span.state' + (done ? '.done' : ''), {}, done ? `Done ${day(done.at)}` : x.kind === 'auto' ? 'Assistant can apply' : 'Apply it yourself'),
+      done || x.kind !== 'auto' ? null : copyAsk(`Apply fix F${n} (${x.title})`, `F${n}`))),   // only what the assistant can apply
     x.tradeoff ? h('span.cost', {}, `Costs: ${x.tradeoff}`) : null,
     steps?.length ? h('details', {}, h('summary', {}, 'Show the steps'), h('ol', {}, steps.map(t => h('li', {}, t)))) : null);
+}
+// Copies a request to paste to the assistant, which confirms the change before making it. The page itself changes nothing.
+function copyAsk(text, label) {
+  const msg = h('span.copied', { role: 'status' });
+  const icon = () => { const v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('aria-hidden', 'true');
+    s('rect', { x: 8, y: 3, width: 8, height: 4, rx: 1 }, v); s('path', { d: 'M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2' }, v); return v; };
+  const copy = async () => {
+    // the old copy command answers at once; the clipboard API can wait on a permission that never comes
+    const ta = h('textarea', { readonly: '', style: 'position:fixed;opacity:0' }); ta.value = text; document.body.append(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+    if (!ok && navigator.clipboard) ok = await Promise.race([navigator.clipboard.writeText(text).then(() => true, () => false), new Promise(r => setTimeout(() => r(false), 1500))]);
+    msg.textContent = ok ? 'Copied. Paste it to your assistant.' : `Copy failed. Type: ${text}`;
+    clearTimeout(msg._t); if (ok) msg._t = setTimeout(() => { msg.textContent = ''; }, 4000);
+  };
+  const label2 = `Copy "Apply fix ${label}"`;
+  return [h('button.copy', { type: 'button', title: label2, 'aria-label': label2, on: { click: copy } }, icon()), msg];
 }
 function fixes() {
   const f = latest.findings || {}, rank = { high: 0, medium: 1, info: 2 };
@@ -442,20 +467,23 @@ function planBlock() {
   const p = D.plan; if (!p) return null;
   const nc = p.nextCheckup, row = (t, items) => items.length ? h('div', {}, h('h3', {}, t), h('ul', {}, items.map(x => h('li', {}, ...[].concat(x))))) : null;
   return [
+    h('p.plan-at', {}, `Written ${dayTime(p.updatedAt)}${latest.takenAt > p.updatedAt ? ', before the latest checkup' : ''}.`),
     h('div.plan', {},
       row('Testing now', p.testing ? [p.testing] : []),
       row('Next checkup', nc ? [[nc.after ? `After ${nc.after}` : null, nc.after && nc.how ? '. ' : null, nc.how].filter(Boolean).join('')] : []),
       row('To decide', p.decide),
       row('To look into', p.investigate),
       row('Not doing', p.notDoing.map(x => [x.what, x.why ? h('span.why', {}, x.why) : null]))),
-    h('p.plan-at', {}, `Written ${dayTime(p.updatedAt)}${latest.takenAt > p.updatedAt ? ', before the latest checkup' : ''}.`),
   ];
 }
 
 /* ---------- details ---------- */
 function rows(list, none) {
   if (!list.length) return h('p.sub', {}, none);
-  return h('ul.rows', {}, list.map(r => h('li', {}, h('span.n', { title: r.title }, r.label), h('span.f', {}, r.figure, r.note ? h('small', {}, r.note) : null))));
+  // a package name breaks after its dots, not inside a word
+  const brk = t => /^[\w]+(\.[\w]+)+$/.test(t) ? t.replace(/\./g, '.\u200b') : t;
+  return h('ul.rows', {}, list.map(r => h('li', {}, h('span.n', { title: r.title }, brk(r.label)), h('span.f', {}, r.figure, r.note ? h('small', {}, r.note) : null),
+    r.sub ? h('span.sm', {}, r.sub) : null)));
 }
 function curve(host, c) {
   host.replaceChildren();
@@ -489,8 +517,8 @@ function detailBody() {
   const est = !apps.length ? (c.estimatedApps || []).filter(a => a.app !== 'android' && a.app !== 'kernel').slice(0, 6).map(a => ({ label: app(a.app), title: a.app, figure: `${a.mah.toLocaleString('en')} mAh` })) : [];
   const wake = (c.wakeups || []).filter(g => g.source !== 'Charger or USB').slice(0, 6).map(g => ({ label: g.source, figure: g.count.toLocaleString('en'), note: 'times' }));
   const bg = [
-    ...(c.usage?.foregroundServices || []).map(f => ({ label: app(f.app), title: f.app, v: f.hours, figure: `${n1(f.hours)} h`, note: 'running in the background' })),
-    ...(c.btScans || []).map(x => ({ label: app(x.app), title: x.app, v: x.hours, figure: `${n1(x.hours)} h`, note: 'scanning Bluetooth' })),
+    ...(c.usage?.foregroundServices || []).map(f => ({ label: app(f.app), title: f.app, v: f.hours, figure: `${n1(f.hours)} h`, sub: 'Running in the background' })),
+    ...(c.btScans || []).map(x => ({ label: app(x.app), title: x.app, v: x.hours, figure: `${n1(x.hours)} h`, sub: 'Scanning Bluetooth' })),
   ].sort((a, b) => b.v - a.v).slice(0, 6);
   lvHost = h('div.lv');
   const cell = (v, u) => v == null ? '–' : `${v}${u || ''}`;
@@ -531,7 +559,9 @@ function readColumn() {
   const before = cs.slice(0, -1).reverse().find(c => c.screenTime != null);
   const mix = latest.screenTime != null && before && mixDiffers(latest, before)
     ? `The screen was on ${Math.round(onShare(latest) * 100)}% of the time, against ${Math.round(onShare(before) * 100)}% at the checkup before, so the two screen-time figures are not a like-for-like comparison.` : null;
-  const line = [split, mix, versus, bits.length ? bits.join(', ').replace(/^./, m => m.toUpperCase()) + '.' : null].filter(Boolean).join(' ') || null;
+  const sh = latest.sameHours, shPrev = cs[cs.length - 2];
+  const same = sh ? `Over the same hours of the day as the checkup on ${day(shPrev.takenAt)} (${sh.label}), screen-off drain ${n1(sh.before) === n1(sh.after) ? `stayed at ${n1(sh.after)}%` : `went from ${n1(sh.before)}% to ${n1(sh.after)}%`} an hour.` : null;
+  const line = [split, mix, versus, same, bits.length ? bits.join(', ').replace(/^./, m => m.toUpperCase()) + '.' : null].filter(Boolean).join(' ') || null;
   const trend = cs.some(c => c.idle);
   const trendBox = h('div.tl');
   const more = h('details.more', { id: 'more', open: '' });

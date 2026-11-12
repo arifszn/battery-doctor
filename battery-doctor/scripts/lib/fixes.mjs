@@ -45,6 +45,19 @@ export function note(dir, text) {
   return entry;
 }
 
+// Record changes a checkup found on the phone that this tool did not make. They are stamped with the
+// checkup's time: all that is known is that they happened since the checkup before.
+export function recordPhoneChanges(dir, items, at) {
+  const log = readLog(dir), added = [];
+  for (const x of items) {
+    if (log.some(e => e.action === 'phone' && e.key === x.key && e.at === at)) continue;
+    const entry = { id: log.length + 1, at, action: 'phone', target: x.text, key: x.key, previous: null, value: null, verified: true, undoneAt: null };
+    log.push(entry); added.push(entry);
+  }
+  if (added.length) writeLog(dir, log);
+  return added;
+}
+
 export function apply(bin, serial, dir, action, target) {
   const log = readLog(dir);
   // An earlier, still-active change of the same kind: refuse if the phone still has it, close it if the phone was changed back by hand.
@@ -82,7 +95,7 @@ export function undo(bin, serial, dir, id) {
   const entry = log.find(e => e.id === id);
   if (!entry) throw new Error(`No change with id ${id}.`);
   if (entry.undoneAt) throw new Error(`Change ${id} was already undone.`);
-  if (entry.action === 'note') { /* a note only leaves the report */ }
+  if (entry.action === 'note' || entry.action === 'phone') { /* a record only leaves the report */ }
   else if (entry.action === 'restrict-background' && !run(bin, serial, 'pm list packages -3 --user 0').split('\n').some(l => l.trim() === `package:${entry.target}`)) {
     entry.note = 'The app is no longer installed, so there was nothing to restore.';
   } else if (entry.action === 'restrict-background') {
