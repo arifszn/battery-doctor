@@ -37,6 +37,16 @@ If the user wants one of these, explain how to do it on the phone themselves.
 5. After applying, read out each result line. If a line says the change was not verified, tell the user it may not have taken.
 6. If the phone refuses a command, do not retry with a different command. Offer the manual route. Some brands block these commands until an extra developer setting is on; see `brands.md`.
 
+## Changes the user makes by hand
+
+The script cannot see what the user changes on the phone. Record it, so the report marks the day and the next checkup can be read against it:
+
+```
+node <skill-dir>/scripts/doctor.mjs note "Put Maps into deep sleep"
+```
+
+Write the note in plain words, with the app's name as the user knows it. Record a reversal the same way ("Took Maps out of deep sleep"). A note changes nothing on the phone. `undo <id>` on a note only removes it from the report, and `undo all` leaves notes alone.
+
 ## Undo
 
 ```

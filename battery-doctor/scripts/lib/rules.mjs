@@ -3,6 +3,7 @@
 
 export const LIMITS = {
   minHours: 4, minDischargedPct: 15,          // below this a checkup is too short to judge
+  minScreenHours: 1,                          // screen-on time below this is too little to scale up to a full charge
   minIdleHours: 6,                            // screen-off time below this gives only a rough idle figure
   idleOk: 1.0, idleHigh: 2.0,                 // % of a full battery per hour with the screen off
   awakeWhileOffPct: 20,                       // share of screen-off time the phone was not asleep
@@ -29,6 +30,13 @@ export function fixList(flags, findings) {
   for (const f of flags) for (const x of f.fixes) { if (!seen.has(x.id)) { seen.add(x.id); out.push({ ...x, n: out.length + 1 }); } }
   for (const x of findings?.manual || []) out.push({ id: `manual:${x.title}`, kind: 'manual', title: x.title, tradeoff: x.tradeoff, steps: x.steps, n: out.length + 1 });
   return out;
+}
+
+// Hours of screen time a full charge gives, scaled from what this checkup's period delivered.
+export function screenTime(s) {
+  const w = s.window;
+  if (!w || (w.dischargedPct ?? 0) < LIMITS.minDischargedPct || (w.screenOnHours ?? 0) < LIMITS.minScreenHours) return null;
+  return Math.round(w.screenOnHours / w.dischargedPct * 1000) / 10;
 }
 
 export function quality(s) {

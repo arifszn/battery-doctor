@@ -12,9 +12,9 @@ const scripts = path.join(root, 'battery-doctor', 'scripts');
 const home = tmpDir();
 process.env.BATTERY_DOCTOR_HOME = home;       // must be set before the modules load
 const { summarize, dur } = await import('../battery-doctor/scripts/lib/parse.mjs');
-const { evaluate, quality, fixList } = await import('../battery-doctor/scripts/lib/rules.mjs');
+const { evaluate, quality, fixList, screenTime } = await import('../battery-doctor/scripts/lib/rules.mjs');
 const { buildReport, reportData } = await import('../battery-doctor/scripts/lib/report.mjs');
-const { apply, undo, readLog } = await import('../battery-doctor/scripts/lib/fixes.mjs');
+const { apply, undo, note, readLog } = await import('../battery-doctor/scripts/lib/fixes.mjs');
 const { unzip } = await import('../battery-doctor/scripts/lib/adb.mjs');
 
 const AT = '2026-11-03T12:00:00.000Z';
@@ -86,6 +86,13 @@ test('fix numbers count each fix once, and manual fixes carry steps', () => {
   for (const x of list) if (x.kind === 'manual') assert.ok(x.steps?.length, `no steps for ${x.id}`);
 });
 
+test('screen time per charge is scaled from the period and withheld when too short', () => {
+  assert.equal(screenTime({ window: { screenOnHours: 7.2, dischargedPct: 89 } }), 8.1);
+  assert.equal(screenTime({ window: { screenOnHours: 0.5, dischargedPct: 40 } }), null);
+  assert.equal(screenTime({ window: { screenOnHours: 3, dischargedPct: 10 } }), null);
+  assert.equal(screenTime({ window: null }), null);
+});
+
 test('a short checkup is reported as not enough data', () => {
   const s = summarize(writeDumps(tmpDir(), fakeDumps({ hours: 2, screenOnHours: 1 })), AT);
   assert.equal(quality(s).ok, false);
@@ -99,7 +106,8 @@ function seed(dir, id, opts) {
 test('report is one self-contained file built from every checkup', () => {
   const dir = path.join(home, 'report-phone');
   seed(dir, '2026-11-03T12-00-00', { idleMa: 150 });
-  seed(dir, '2026-11-04T12-00-00', { idleMa: 60 });
+  seed(dir, '2026-11-04T10-00-00', { idleMa: 90, start: '2026-11-04-08-00-00' });   // same charge period as the next one: only the latest counts
+  seed(dir, '2026-11-04T12-00-00', { idleMa: 60, start: '2026-11-04-08-00-00' });
   fs.writeFileSync(path.join(dir, 'checkups', '2026-11-04T12-00-00', 'findings.json'), JSON.stringify({ headline: 'Idle drain <b>halved</b>.', appNames: { 'com.example.video': 'Video' } }));
   const data = reportData(dir);
   assert.equal(data.checkups.length, 2);
@@ -131,6 +139,15 @@ test('unzip extracts stored and deflated entries and rejects path traversal', ()
   assert.equal(fs.readFileSync(path.join(dest, 'platform-tools', 'adb'), 'utf8'), 'stored');
   assert.equal(fs.readFileSync(path.join(dest, 'platform-tools', 'NOTICE.txt'), 'utf8'), 'deflated '.repeat(50));
   assert.throws(() => unzip(zip([['../evil', Buffer.from('x'), false]]), dest), /Unsafe path/);
+});
+
+test('a note records a hand fix without a phone, and undo removes it', () => {
+  const dir = path.join(home, 'note-phone'); fs.mkdirSync(dir, { recursive: true });
+  const e = note(dir, '  Put Maps into\ndeep sleep  ');
+  assert.deepEqual([e.action, e.target, e.verified], ['note', 'Put Maps into deep sleep', true]);
+  assert.throws(() => note(dir, '   '));
+  assert.ok(undo(null, null, dir, e.id).undoneAt);
+  assert.equal(readLog(dir).length, 1);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {

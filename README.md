@@ -4,7 +4,7 @@ An agent skill that finds what drains your Android phone's battery, fixes it, an
 
 You plug the phone into your computer and ask your AI assistant to check the battery. The skill investigates the phone's own records: what woke it, which apps ran in the background, which kept a sensor, Bluetooth scan or location request going, and how fast the battery fell with the screen off. It names the causes in plain words and writes a report you open in your browser.
 
-![The battery report: a phone showing idle drain, a calendar of checkups with the changes marked, and a numbered list of fixes](docs/hero.png)
+![The battery report: a phone showing the screen time a full charge gives, a calendar of checkups with the changes marked, and a numbered list of fixes](docs/hero.png)
 
 ## Why it exists
 
@@ -16,7 +16,7 @@ The phone does record all of it. The records are only reachable over USB and are
 
 1. **Connect the phone.** A USB cable and one setting on the phone. The assistant walks you through it and opens a picture guide.
 2. **Run a checkup.** It takes under a minute and investigates how fast the battery drains, which apps use it, and what keeps the phone awake.
-3. **Read the report.** How long a charge lasts, how fast the phone drains when you are not using it, the causes, and a numbered list of fixes with what each one costs you.
+3. **Read the report.** How much screen time a full charge gives, how fast the phone drains when you are not using it, the causes, and a numbered list of fixes with what each one costs you.
 4. **Pick the fixes you want.** The assistant applies the ones it can and gives you steps for the rest. Nothing changes on your phone without your yes, and changes are logged so they can be undone.
 5. **Check again after a day of use.** The report keeps every checkup on a calendar, with your changes marked, so you see what worked.
 
@@ -133,6 +133,7 @@ node battery-doctor/scripts/doctor.mjs guide     # open the picture guide for co
 node battery-doctor/scripts/doctor.mjs check     # run a checkup and build the report
 node battery-doctor/scripts/doctor.mjs report    # open the report
 node battery-doctor/scripts/doctor.mjs fixes     # list the numbered fixes
+node battery-doctor/scripts/doctor.mjs note "..." # record a change you made by hand
 node battery-doctor/scripts/doctor.mjs changes   # list changes made
 node battery-doctor/scripts/doctor.mjs undo all  # reverse them
 ```

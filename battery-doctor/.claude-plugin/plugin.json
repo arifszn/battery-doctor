@@ -1,6 +1,6 @@
 {
   "name": "battery-doctor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Find what drains an Android phone's battery and make a charge last longer. Reads the phone's own battery statistics over USB, shows an HTML report with the trend across checkups, and applies reversible fixes only after you confirm each one.",
   "license": "MIT",
   "author": {

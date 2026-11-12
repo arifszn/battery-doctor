@@ -7,6 +7,7 @@
 //   node doctor.mjs report            rebuild the HTML report from saved checkups
 //   node doctor.mjs fixes             list the numbered fixes (F1, F2, ...) of the latest checkup
 //   node doctor.mjs apply <action> <target> --yes     make one confirmed change
+//   node doctor.mjs note "<text>"      record a change the user made by hand, so the report marks it
 //   node doctor.mjs undo <id|all>     reverse a change
 //   node doctor.mjs changes           list changes made so far
 import fs from 'node:fs';
@@ -14,8 +15,8 @@ import path from 'node:path';
 import { HOME, DOWNLOAD_URL, findAdb, downloadAdb, devices, shell } from './lib/adb.mjs';
 import { collect } from './lib/collect.mjs';
 import { summarize } from './lib/parse.mjs';
-import { evaluate, quality, fixList } from './lib/rules.mjs';
-import { apply, undo, readLog, ACTIONS, SETTINGS } from './lib/fixes.mjs';
+import { evaluate, quality, fixList, screenTime } from './lib/rules.mjs';
+import { apply, undo, note, readLog, ACTIONS, SETTINGS } from './lib/fixes.mjs';
 import { buildReport, loadCheckups, openInBrowser, ASSETS } from './lib/report.mjs';
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -58,6 +59,8 @@ function printSummary(s, flagsList, q, prev) {
   if (w) {
     say(`\n## Since the last full charge (${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' : 'start unknown'})`);
     say(`- On battery ${w.hoursOnBattery} h, used ${pct(w.dischargedPct)}: screen on ${w.screenOnHours} h, screen off ${w.screenOffHours} h`);
+    const st = screenTime(s);
+    if (st != null) say(`- Screen time from a full charge: about ${st} h (this period: ${w.screenOnHours} h of screen, ${pct(w.dischargedPct)} of the battery used, idle time included)`);
     if (s.hoursPerCharge) say(`- At this rate a full charge lasts about ${s.hoursPerCharge} h`);
     if (s.idle) say(`- Idle drain (screen off): ${s.idle.pctPerHour}% per hour${s.idle.ma ? ` (${s.idle.ma} mA)` : ''}, healthy is under 1%. Method: ${s.idle.method}`);
     if (s.active) say(`- Screen-on drain: ${s.active.pctPerHour}% per hour${s.active.ma ? ` (${s.active.ma} mA)` : ''}`);
@@ -65,8 +68,10 @@ function printSummary(s, flagsList, q, prev) {
   }
   if (!q.ok) { say('\n## NOT ENOUGH DATA'); q.reasons.forEach(r => say(`- ${r}`)); }
   if (prev?.idle && s.idle) {
+    const a = screenTime(prev), b2 = screenTime(s);
     const diff = Math.round((s.idle.pctPerHour - prev.idle.pctPerHour) / prev.idle.pctPerHour * 100);
     say(`\n## Compared with the checkup on ${prev.takenAt.slice(0, 10)}`);
+    if (a != null && b2 != null) say(`- Screen time from a full charge: ${a} h -> ${b2} h`);
     say(`- Idle drain: ${prev.idle.pctPerHour}% -> ${s.idle.pctPerHour}% per hour (${diff > 0 ? '+' : ''}${diff}%)`);
     if (prev.hoursPerCharge && s.hoursPerCharge) say(`- Hours per charge: ${prev.hoursPerCharge} -> ${s.hoursPerCharge}`);
     say(`- Screen-off hours compared: ${prev.window?.screenOffHours} then, ${w?.screenOffHours} now. A period with a night in it idles lower than a daytime one.`);
@@ -134,7 +139,9 @@ const commands = {
     const s = summarize(raw, takenAt);
     fs.writeFileSync(path.join(cdir, 'summary.json'), JSON.stringify(s, null, 2));
     const q = quality(s), fl = evaluate(s);
-    printSummary(s, fl, q, before[before.length - 1]?.summary);
+    const same = before.filter(c => s.window?.startedAt && c.summary.window?.startedAt === s.window.startedAt).pop()?.summary;
+    printSummary(s, fl, q, before.filter(c => c.summary.window?.startedAt !== s.window?.startedAt).pop()?.summary);
+    if (same) say(`\n## SAME CHARGE PERIOD as the checkup on ${same.takenAt.slice(0, 16).replace('T', ' ')} UTC\n- ${same.window.hoursOnBattery === s.window.hoursOnBattery ? 'Nothing new was measured: the phone has not been used on battery since then.' : 'This checkup covers more of the same period.'} It replaces that checkup in the report. A new period starts after the phone is charged to full.`);
     const out = buildReport(dir);
     say(`\ncheckup folder: ${cdir}`);
     say(`report: ${out}`);
@@ -172,20 +179,35 @@ const commands = {
     if (loadCheckups(dir).length) buildReport(dir);
   },
 
-  undo() {
-    const bin = needAdb(), serial = needDevice(bin), dir = deviceDir(bin, serial);
-    const ids = args[0] === 'all' ? readLog(dir).filter(e => !e.undoneAt && e.action !== 'force-stop').map(e => e.id).reverse() : [+args[0]];
-    if (!ids.length || ids.some(isNaN)) fail('Usage: node doctor.mjs undo <id|all>. Run "node doctor.mjs changes" to see the ids.');
-    for (const id of ids) { const e = undo(bin, serial, dir, id); say(`undone ${e.id}: ${e.action} ${e.target} is back to ${e.previous}`); }
+  note() {
+    const dir = pickDir(), e = note(dir, args.join(' '));
+    say(`change ${e.id} noted: ${e.target}`);
+    say(`remove the note with: node doctor.mjs undo ${e.id}`);
     if (loadCheckups(dir).length) buildReport(dir);
   },
 
+  undo() {
+    const all = args[0] === 'all';
+    // a note is only a record, so removing one needs no phone
+    const noteOnly = !all && readLog(pickDir()).find(e => e.id === +args[0])?.action === 'note';
+    const bin = noteOnly ? null : needAdb(), serial = noteOnly ? null : needDevice(bin), dir = noteOnly ? pickDir() : deviceDir(bin, serial);
+    const ids = all ? readLog(dir).filter(e => !e.undoneAt && e.action !== 'force-stop' && e.action !== 'note').map(e => e.id).reverse() : [+args[0]];
+    if (!ids.length || ids.some(isNaN)) fail('Usage: node doctor.mjs undo <id|all>. Run "node doctor.mjs changes" to see the ids.');
+    let failed = 0;
+    for (const id of ids) {
+      try { const e = undo(bin, serial, dir, id); say(e.action === 'note' ? `note ${e.id} removed: ${e.target}` : `undone ${e.id}: ${e.action} ${e.target} is back to ${e.previous}`); }
+      catch (err) { failed++; say(`NOT undone ${id}: ${err.message}`); }   // one failure must not block the rest
+    }
+    if (loadCheckups(dir).length) buildReport(dir);
+    if (failed) process.exitCode = 1;
+  },
+
   changes() {
-    const bin = needAdb(), serial = needDevice(bin), log = readLog(deviceDir(bin, serial));
+    const log = readLog(pickDir());
     if (!log.length) return say('No changes have been made to this phone.');
-    for (const e of log) say(`${e.id}. ${e.at.slice(0, 16).replace('T', ' ')} ${e.action} ${e.target}: ${e.previous ?? 'n/a'} -> ${e.value}${e.undoneAt ? ' (undone)' : ''}${e.verified ? '' : ' (not verified)'}`);
+    for (const e of log) say(`${e.id}. ${e.at.slice(0, 16).replace('T', ' ')} ${e.action === 'note' ? `done by hand: ${e.target}` : `${e.action} ${e.target}: ${e.previous ?? 'n/a'} -> ${e.value}`}${e.undoneAt ? ' (undone)' : ''}${e.verified ? '' : ' (not verified)'}`);
   },
 };
 
-if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 11).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
+if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 12).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
 try { await commands[cmd](); } catch (e) { fail(e.message); }

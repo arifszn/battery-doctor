@@ -10,6 +10,7 @@ The script prints `NOT ENOUGH DATA` when the period is under 4 hours or under 15
 
 | Number | Meaning | How to say it |
 |---|---|---|
+| Screen time from a full charge | Hours of screen-on time in this period, scaled to a full battery. It counts the idle time between sessions, so it is what the user really gets. The headline number, and the one to compare between checkups. Left out when the screen was on under 1 hour. | "A full charge gives you about 8 hours of screen time." |
 | Idle drain | Percent of a full battery lost per hour while the screen is off. The number that background fixes change. | "Your phone loses 2% an hour when you are not using it." |
 | A full charge lasts | Hours on battery divided by the share of battery used, scaled to 100%. Depends on how much the phone was used that day. | "At this rate a full charge lasts about 19 hours." |
 | Screen-on drain | Percent per hour while the screen is on. Depends on the apps used and on brightness. | "While you use it, it loses about 8% an hour." |
@@ -62,7 +63,8 @@ The script decides what is a problem. These are rules of thumb from field use on
 
 ## Comparing two checkups
 
-- Compare idle drain first. It depends least on how much the phone was used.
+- Lead with screen time from a full charge: "about 5 hours, up from 4". It is the result the user feels.
+- Then check idle drain. It depends least on how much the phone was used, so it shows whether a fix worked. If screen time rose but idle drain did not fall, the day was different, not the phone; say so.
 - A period that includes a night idles lower than a daytime period, because most apps go quiet. If the screen-off hours differ a lot between two checkups, say that the comparison is rough.
 - "A full charge lasts" moves with usage. A longer figure after a light day is not an improvement.
 - One checkup after a change is one data point. Recommend a second if the result is close.

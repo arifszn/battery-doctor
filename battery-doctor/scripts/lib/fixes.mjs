@@ -35,8 +35,20 @@ const bgMode = (bin, serial, pkg) => {
 };
 const getSetting = (bin, serial, ns, key) => run(bin, serial, `settings get ${ns} ${key}`);
 
+// Record something the user did by hand on the phone, so the report can mark it. Nothing is sent to the phone.
+export function note(dir, text) {
+  const clean = String(text || '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, 160);
+  if (!clean) throw new Error('Say what was changed, for example: note "Put Maps into deep sleep".');
+  const log = readLog(dir);
+  const entry = { id: log.length + 1, at: new Date().toISOString(), action: 'note', target: clean, previous: null, value: null, verified: true, undoneAt: null };
+  log.push(entry); writeLog(dir, log);
+  return entry;
+}
+
 export function apply(bin, serial, dir, action, target) {
   const log = readLog(dir);
+  const dup = action !== 'force-stop' && log.find(e => e.action === action && e.target === target && e.verified && !e.undoneAt);
+  if (dup) throw new Error(`This change is already in place (change ${dup.id}). Undo it first to apply it again.`);
   const entry = { id: log.length + 1, at: new Date().toISOString(), action, target, previous: null, value: null, verified: false, undoneAt: null };
   if (action === 'restrict-background') {
     checkPackage(bin, serial, target);
@@ -63,7 +75,8 @@ export function undo(bin, serial, dir, id) {
   const entry = log.find(e => e.id === id);
   if (!entry) throw new Error(`No change with id ${id}.`);
   if (entry.undoneAt) throw new Error(`Change ${id} was already undone.`);
-  if (entry.action === 'restrict-background') {
+  if (entry.action === 'note') { /* a note only leaves the report */ }
+  else if (entry.action === 'restrict-background') {
     const mode = entry.previous === 'default' ? 'default' : entry.previous;
     run(bin, serial, `cmd appops set ${entry.target} RUN_ANY_IN_BACKGROUND ${mode}`);
     if (bgMode(bin, serial, entry.target) === 'ignore') throw new Error('The phone still reports the app as restricted.');

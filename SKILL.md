@@ -38,13 +38,13 @@ Run `status`. Act on the line that starts with `adb:` and the line that starts w
 
 Give the notice from Rule 1, then run `check`. It takes under a minute, prints a summary, saves the checkup and writes the report.
 
-Read the whole output. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
+Read the whole output. If it contains `SAME CHARGE PERIOD`, tell the user this checkup repeats the last one and when a new one will be useful. If it contains `NOT ENOUGH DATA`, tell the user why and when to come back: use the phone unplugged for most of a day, do not restart it, and run the checkup before charging. You can still tell them what the short checkup shows, clearly marked as incomplete.
 
 ## Step 3: Explain
 
 1. Write `findings.json` into the checkup folder printed by `check`. Format and writing guidance: `battery-doctor/references/report.md`. It carries a one-sentence headline, readable app names, and manual fixes for this phone's brand.
 2. Run `report`. It rebuilds the report and opens it in the browser. Tell the user where the file is.
-3. In the chat, give at most five lines: how long a charge lasts now, how fast the phone drains while idle against the healthy level, the top one to three causes, and whether the battery itself is worn.
+3. In the chat, give at most five lines: how much screen time a full charge gives (and the change since the last checkup), how fast the phone drains while idle against the healthy level, the top one to three causes, and whether the battery itself is worn.
 
 To interpret the numbers, read `battery-doctor/references/reading-results.md`.
 
@@ -54,7 +54,7 @@ To interpret the numbers, read `battery-doctor/references/reading-results.md`.
 2. Add manual fixes that fit this phone from `battery-doctor/references/brands.md`.
 3. Ask which ones they want. Wait for the answer.
 4. For each chosen `auto` fix, run `apply <action> <target> --yes`, using the action and target from its fix id (`restrict-background:com.example.app` becomes `apply restrict-background com.example.app --yes`). Report the result line by line. If the output says `verified on the phone: NO`, say that the change may not have taken.
-5. For each chosen `manual` fix, give the steps and wait until the user says it is done.
+5. For each chosen `manual` fix, give the steps and wait until the user says it is done. Then run `note "<what they did>"`, for example `note "Put Maps into deep sleep"`, so the report marks it on the calendar. Do the same when the user says they changed something on the phone themselves, or reversed it.
 
 Details of each action and how to undo: `battery-doctor/references/fixes.md`.
 
@@ -66,7 +66,7 @@ Compare fairly. A period that includes a night drains slower than a daytime one,
 
 ## Other requests
 
-- "Undo that" or "put it back": run `changes` to list them, then `undo <id>` or `undo all`.
+- "Undo that" or "put it back": run `changes` to list them, then `undo <id>` or `undo all`. A note of a hand fix cannot be reversed by the script: give the user the steps to reverse it, then run `note` for the reversal.
 - "Show the report": run `report`.
 - "Apply fix F1" (a number from the report): run `fixes` to see what that number is in the latest checkup. Confirm that exact change with the user (Rule 2), then follow Step 4.
 - "Is it better?": run `check` if the last checkup is older than the last change, otherwise read the comparison from the last `check`.

@@ -6,7 +6,7 @@ import path from 'node:path';
 const pad = n => String(n).padStart(2, '0');
 
 // style: 'samsung' (absolute timestamps, current= samples) or 'aosp' (relative timestamps, no current)
-export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hours = 10, screenOnHours = 4 } = {}) {
+export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hours = 10, screenOnHours = 4, start = '2026-11-03-08-00-00' } = {}) {
   const offHours = hours - screenOnHours;
   const hist = ['Battery History [Format: 2] (1% used):'];
   const stamp = sec => style === 'samsung'
@@ -31,7 +31,7 @@ export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hou
   System starts: 0, currently on battery: true
   Time on battery: ${d(hours)} (100.0%) realtime, ${d(screenOnHours + offHours * 0.3)} (50.0%) uptime
   Time on battery screen off: ${d(offHours)} (60.0%) realtime, ${d(offHours * 0.3)} (18.0%) uptime
-  Start clock time: 2026-11-03-08-00-00
+  Start clock time: ${start}
   Screen on: ${d(screenOnHours)} (40.0%) 12x, Interactive: ${d(screenOnHours)} (40.0%)
   Idle mode light time: ${d(offHours * 0.5)} (30.0%) 20x -- longest 30m 0s 0ms
   Idle mode full time: 0ms (0.0%) 0x -- longest 0ms

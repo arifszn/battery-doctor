@@ -8,7 +8,7 @@ Every field is optional.
 
 ```json
 {
-  "headline": "With the screen off your phone loses 1.9% per hour, down from 3.3% two days ago. A healthy phone loses under 1%.",
+  "headline": "A full charge now gives about 5 hours of screen time, up from 4 hours two days ago.",
   "appNames": {
     "com.instagram.android": "Instagram",
     "com.sec.android.app.launcher": "Home screen"
@@ -30,7 +30,7 @@ Every field is optional.
 
 | Field | What it is |
 |---|---|
-| `headline` | One or two sentences at the top of the report: where the battery stands now. If left out, the script writes one from the numbers. |
+| `headline` | One or two sentences at the top of the report: where the battery stands now. Lead with the screen time a full charge gives, and with the change since the last checkup when there is one. If left out, the script writes one from the numbers. |
 | `appNames` | A readable name for each package name that appears in the `check` output. Use the name the user sees on their phone. Leave out any you are not sure of. |
 | `explanations` | Keyed by the problem id from the `check` output (the text between `]` and `:`, for example `idle-drain` or `always-running:com.example.app`). Replaces the script's default sentence for that problem. |
 | `manual` | Fixes the user does by hand, usually from `brands.md`. `steps` are shown as a numbered list. |
@@ -46,4 +46,4 @@ Every field is optional.
 
 ## What the report shows
 
-A drawing of the phone with its idle drain and battery curve, a one-sentence verdict, the fix list numbered F1, F2 and so on, a calendar with the idle drain on each day that has a checkup and the changes marked, and a Details section. Choosing a day in the calendar, or a checkup in the Details list, shows that checkup on the phone drawing and in the figures below it. The user can refer to a fix by its number.
+A drawing of the phone with the screen time a full charge gives, its idle drain and battery curve, a one-sentence verdict, the fix list numbered F1, F2 and so on, two curves (screen time per charge, and idle drain against the healthy limit), a calendar with both figures on each day that has a checkup and the changes marked, and a Details section. Choosing a day in the calendar, or a checkup in the Details list, shows that checkup on the phone drawing and in the figures below it. The user can refer to a fix by its number.

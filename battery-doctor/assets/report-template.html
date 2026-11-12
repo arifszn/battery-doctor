@@ -8,13 +8,13 @@
 <style>
 :root {
   --bg: #eeecea; --field: #cdc3b6; --ink: #333231; --muted: #5e5a56; --soft: #e1ded9;
-  --accent: #3f6b3a; --accent-ink: #ffffff; --warn: #8a4b12;
+  --accent: #3f6b3a; --accent-ink: #ffffff; --warn: #8a4b12; --panel: #fbfaf8;
   --font: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --t1: clamp(30px, 2rem + .9vw, 46px); --t2: 18px; --t3: 15px;
   --pad: clamp(22px, 5vw, 72px);
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #1b1a19; --field: #2b2926; --ink: #ecebe9; --muted: #b0aca6; --soft: #2a2927; --accent: #9fcb92; --accent-ink: #1b1a19; --warn: #e5b25c; }
+  :root { --bg: #1b1a19; --field: #2b2926; --ink: #ecebe9; --muted: #b0aca6; --soft: #2a2927; --accent: #9fcb92; --accent-ink: #1b1a19; --warn: #e5b25c; --panel: #262523; }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -48,19 +48,29 @@ h2 { font-weight: 500; font-size: var(--t1); line-height: 1.12; letter-spacing: 
 .tr text { font-family: var(--font); fill: var(--muted); font-size: 15px; }
 .tr text.v { fill: var(--ink); font-size: 18px; font-weight: 600; }
 .tr text.z { fill: var(--accent); }
+.tr text.h { fill: var(--ink); font-weight: 600; }
 .cal + .cal { margin-top: 28px; }
 .cal-m { font-weight: 600; margin-bottom: 10px; }
 .cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal-g .wd { font-size: 13px; color: var(--muted); text-align: center; padding-bottom: 2px; }
-.day { position: relative; width: 100%; min-height: 64px; padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; font-size: 13px; line-height: 1.2; color: var(--muted); box-shadow: inset 0 0 0 1px var(--soft); }
+.day { position: relative; width: 100%; min-height: 78px; padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; font-size: 13px; line-height: 1.2; color: var(--muted); box-shadow: inset 0 0 0 1px var(--soft); }
 .day.has { background: var(--soft); color: var(--ink); }
 .day.ok { background: var(--accent); color: var(--accent-ink); }
 .day.rough { background: none; box-shadow: none; outline: 1.5px dashed var(--muted); outline-offset: -2px; color: var(--ink); }
 .day.cur { box-shadow: inset 0 0 0 3px var(--ink); }
 .day .dv { font-size: 20px; font-weight: 600; }
+.day .dv small { font-size: 13px; font-weight: 400; }
+.day .di { font-size: 13px; }
 .day .dm { position: absolute; top: 5px; right: 5px; font-size: 11px; font-weight: 600; line-height: 16px; padding: 0 5px; border-radius: 999px; background: var(--ink); color: var(--bg); }
 .day.ok .dm { background: var(--accent-ink); color: var(--accent); }
-.tip { position: absolute; z-index: 3; pointer-events: none; background: var(--ink); color: var(--bg); font-size: var(--t3); line-height: 1.4; padding: 8px 10px; max-width: 260px; transform: translate(-50%, -100%); }
+.tip { position: absolute; z-index: 3; pointer-events: none; background: var(--ink); color: var(--bg); font-size: var(--t3); line-height: 1.35; padding: 12px 14px; border-radius: 8px; width: max-content; max-width: min(320px, 90vw); transform: translate(-50%, -100%); box-shadow: 0 8px 24px -8px rgba(0,0,0,.45); }
+.tip .tt { font-weight: 600; font-size: 16px; }
+.tip .tt span { font-weight: 400; opacity: .7; margin-left: 8px; }
+.tip dl { margin-top: 8px; display: grid; grid-template-columns: auto auto; gap: 4px 20px; }
+.tip dt { opacity: .7; white-space: nowrap; }
+.tip dd { text-align: right; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip .tn { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); font-size: 13px; opacity: .85; }
+.tip .tn + .tn { margin-top: 2px; padding-top: 0; border-top: 0; }
 .tip[hidden] { display: none; }
 .notes { margin-top: 18px; display: grid; gap: 4px; font-size: var(--t3); color: var(--muted); }
 .notes b { font-weight: 600; color: var(--ink); margin-right: 8px; }
@@ -78,21 +88,17 @@ h2 { font-weight: 500; font-size: var(--t1); line-height: 1.12; letter-spacing: 
 .fix ol { list-style: decimal; padding-left: 20px; margin-top: 6px; }
 .empty { margin-top: 24px; color: var(--muted); }
 /* the fix section is the one block that asks the reader to act: it takes the phone's dark screen */
-.focus { background: #131312; color: #f1efe9; padding: clamp(28px, 4vw, 48px); margin-left: calc(-1 * clamp(0px, 2vw, 24px)); margin-right: calc(-1 * clamp(0px, 2vw, 24px)); }
-.focus .lead, .focus .how { color: #bdb9b0; }
-.how { margin-top: 20px; font-size: var(--t3); }
-.also { margin-top: 24px; display: grid; gap: 12px; font-size: var(--t3); color: #bdb9b0; }
-.also b { display: block; font-weight: 600; color: #f1efe9; }
+.focus { background: var(--panel); color: var(--ink); border-radius: 14px; padding: clamp(28px, 4vw, 48px); margin-left: calc(-1 * clamp(0px, 2vw, 24px)); margin-right: calc(-1 * clamp(0px, 2vw, 24px)); }
+.focus .lead { color: var(--muted); }
+.also { margin-top: 24px; display: grid; gap: 12px; font-size: var(--t3); color: var(--muted); }
+.also b { display: block; font-weight: 600; color: var(--ink); }
 .focus .fixlist { gap: 0; margin-top: 20px; }
-.focus .fix { padding: 20px 0; border-top: 1px solid rgba(255,255,255,.14); grid-template-columns: 44px minmax(0, 1fr); }
-.focus .fix .id { color: #b9e3a6; font-size: 22px; line-height: 1.3; }
+.focus .fix { padding: 20px 0; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); grid-template-columns: 44px minmax(0, 1fr); }
+.focus .fix .id { color: var(--accent); font-size: 22px; line-height: 1.3; }
 .focus .fix .t { font-size: 20px; line-height: 1.35; font-weight: 500; }
-.focus .fix .cost, .focus .fix summary, .focus .empty { color: #bdb9b0; }
-.focus .state { display: table; margin: 8px 0 4px; background: rgba(255,255,255,.12); color: #f1efe9; }
-.focus .state.done { background: #b9e3a6; color: #131312; }
-.focus :focus-visible { outline-color: #b9e3a6; }
-/* the page is already dark there, so the block lifts in the accent's hue instead */
-@media (prefers-color-scheme: dark) { .focus { background: #24301f; } }
+.focus .fix .cost, .focus .fix summary, .focus .empty { color: var(--muted); }
+.focus .state { display: table; margin: 8px 0 4px; background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); }
+.focus .state.done { background: var(--accent); color: var(--accent-ink); }
 
 /* details */
 .more { margin-top: clamp(64px, 8vw, 110px); margin-bottom: 90px; }
@@ -156,6 +162,7 @@ const h = (tag, attrs, ...kids) => {
 };
 const s = (tag, attrs, parent, txt) => { const el = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs || {})) if (v != null) el.setAttribute(k, v); if (txt != null) el.textContent = txt; if (parent) parent.append(el); return el; };
 const n1 = v => (v == null ? null : (Math.round(v * 10) / 10).toFixed(1));
+const longDay = iso => new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 const day = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 const hm = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 const dayTime = iso => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -168,7 +175,7 @@ const tidy = t => String(t).replace(/[\w.]+\.[\w.]+/g, m => app(m));
 const live = D.changes.filter(c => !c.undoneAt);
 const fixKey = c => `${c.action}:${c.target}`;
 const doneBy = Object.fromEntries(live.filter(c => c.action !== 'force-stop').map(c => [fixKey(c), c]));   // a closed app can be running again
-const changeText = c => c.action === 'restrict-background' ? `${app(c.target)} stopped from running in the background`
+const changeText = c => c.action === 'note' ? c.target : c.action === 'restrict-background' ? `${app(c.target)} stopped from running in the background`
   : c.action === 'force-stop' ? `${app(c.target)} closed`
   : ({ ble_scan_always_enabled: 'Background Bluetooth scanning turned off', wifi_scan_always_enabled: 'Background Wi-Fi scanning turned off', doze_always_on: 'Always-on display turned off' })[c.target] || `${c.target} set to ${c.value}`;
 // markers on the timeline: only changes the phone confirmed and that last (closing an app does not)
@@ -179,9 +186,19 @@ const rough = c => c.quality?.ok === false || (c.idle?.hours ?? 0) < D.limits.mi
 let sel = cs.length - 1;
 const ok = D.limits.idleOk;
 
+// share of the period spent with the screen on; two checkups far apart on this are not a like-for-like comparison
+const onShare = c => c.window?.hoursOnBattery ? c.window.screenOnHours / c.window.hoursOnBattery : null;
+const mixDiffers = (a, b) => onShare(a) != null && onShare(b) != null && Math.abs(onShare(a) - onShare(b)) > 0.1;
 function verdict() {
   const hl = latest.findings?.headline;
   if (hl) { const m = hl.match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : hl; }
+  const st = latest.screenTime, pst = cs.slice(0, -1).reverse().find(c => c.screenTime != null);
+  if (st != null) {
+    const now = `${n1(st)} h`;
+    if (!pst || latest.quality?.ok === false || pst.quality?.ok === false || mixDiffers(latest, pst)) return `A full charge gives about ${now} of screen time.`;
+    if (n1(pst.screenTime) === n1(st)) return `A full charge still gives about ${now} of screen time.`;
+    return `A full charge now gives about ${now} of screen time, ${st > pst.screenTime ? 'up' : 'down'} from ${n1(pst.screenTime)} h.`;
+  }
   const i = latest.idle;
   if (!i) return 'This checkup could not measure idle drain.';
   const prev = cs.slice(0, -1).reverse().find(c => c.idle);
@@ -196,7 +213,7 @@ const clockOf = c => { const st = c.window?.startedAt ? new Date(c.window.starte
 function phone() {
   const c = cs[sel], b = c.battery || {}, lv = c.levels || [], idle = c.idle;
   const stage = document.getElementById('stage');
-  const svg = s('svg', { class: 'phone', viewBox: '-6 0 332 660', role: 'img', 'aria-label': `${maker(latest.device)} showing the checkup of ${dayTime(c.takenAt)}: battery at ${b.levelPct ?? 'unknown'}%, idle drain ${idle ? n1(idle.pctPerHour) + '% per hour' : 'not measured'}.` });
+  const svg = s('svg', { class: 'phone', viewBox: '-6 0 332 660', role: 'img', 'aria-label': `${maker(latest.device)} showing the checkup of ${dayTime(c.takenAt)}: battery at ${b.levelPct ?? 'unknown'}%, ${c.screenTime != null ? `about ${n1(c.screenTime)} h of screen time from a full charge, ` : ''}idle drain ${idle ? n1(idle.pctPerHour) + '% per hour' : 'not measured'}.` });
   const defs = s('defs', {}, svg);
   const cp = s('clipPath', { id: 'scr' }, defs); s('rect', { x: 10, y: 10, width: 300, height: 640, rx: 38 }, cp);
   s('rect', { x: -3, y: 150, width: 6, height: 56, rx: 3, fill: '#0b0b0a' }, svg);
@@ -206,14 +223,16 @@ function phone() {
   const g = s('g', { 'clip-path': 'url(#scr)' }, svg);
   s('rect', { x: 10, y: 10, width: 300, height: 640, fill: '#131312' }, g);
   s('text', { x: 34, y: 52, 'font-size': 14, 'font-weight': 600 }, g, hm(c.takenAt));
+  s('text', { x: 34, y: 78, 'font-size': 14, class: 'm' }, g, longDay(c.takenAt));
   const lvl = b.levelPct != null ? Math.max(0, Math.min(100, b.levelPct)) : 0;
   s('rect', { x: 262, y: 41, width: 26, height: 13, rx: 3.5, fill: 'none', stroke: '#f1efe9', 'stroke-width': 1.5 }, g);
   s('rect', { x: 289.5, y: 45, width: 2.5, height: 5, rx: 1, fill: '#f1efe9' }, g);
   if (b.levelPct != null) s('rect', { x: 264.5, y: 43.5, width: 21 * lvl / 100, height: 8, rx: 2, fill: '#f1efe9' }, g);
-  s('text', { x: 34, y: 120, 'font-size': 14, class: 'm' }, g, 'Screen off, drain per hour');
-  const big = s('text', { x: 30, y: 206, 'font-size': 92, class: 'ser' }, g, idle ? n1(idle.pctPerHour) : '\u2013');
-  s('tspan', { dx: 8, 'font-size': 24, class: 'm' }, big, '%');
-  s('text', { x: 34, y: 234, 'font-size': 14, class: 'm' }, g, `Healthy is under ${ok}%`);
+  const st = c.screenTime, w = c.window || {};
+  s('text', { x: 34, y: 122, 'font-size': 14, class: 'm' }, g, st != null ? 'Screen time from a full charge' : 'Screen off, drain per hour');
+  const big = s('text', { x: 30, y: 206, 'font-size': 92, class: 'ser' }, g, st != null ? n1(st) : idle ? n1(idle.pctPerHour) : '\u2013');
+  s('tspan', { dx: 8, 'font-size': 24, class: 'm' }, big, st != null ? 'h' : '%');
+  s('text', { x: 34, y: 234, 'font-size': 14, class: 'm' }, g, st != null ? `This period: ${n1(w.screenOnHours)} h of screen, ${w.dischargedPct}% used` : `Healthy is under ${ok}%`);
   if (lv.length > 1) {
     const end = Math.max(lv[lv.length - 1][0], 1), X = t => 30 + t / end * 260, Y = v => 480 - v / 100 * 150;
     s('text', { x: 30, y: 316, 'font-size': 14, class: 'm' }, g, `Battery level, down to ${lv[lv.length - 1][1]}%`);
@@ -225,6 +244,10 @@ function phone() {
     s('text', { x: 30, y: 500, 'font-size': 13, class: 'm' }, g, clock(0));
     s('text', { x: 290, y: 500, 'font-size': 13, class: 'm', 'text-anchor': 'end' }, g, clock(end));
   }
+  if (st != null && idle) {
+    s('text', { x: 30, y: 552, 'font-size': 14, class: 'm' }, g, 'Screen off, drain per hour');
+    s('text', { x: 290, y: 552, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, `${n1(idle.pctPerHour)}%`);
+  }
   s('text', { x: 30, y: 588, 'font-size': 14, class: 'm' }, g, 'A full charge lasts about');
   s('text', { x: 290, y: 588, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, hpc(c) != null ? `${n1(hpc(c))} h` : '–');
   s('rect', { x: 125, y: 638, width: 70, height: 4, rx: 2, fill: 'rgba(255,255,255,.4)' }, g);
@@ -235,27 +258,37 @@ function phone() {
 /* ---------- timeline ---------- */
 function tooltip(host) {
   const tip = h('div.tip', { hidden: true }); host.append(tip);
-  return { show(x, y, lines) { tip.replaceChildren(...lines.flatMap((l, i) => i ? [h('br'), l] : [l])); tip.hidden = false; const w = host.clientWidth, half = tip.offsetWidth / 2; tip.style.left = Math.max(half, Math.min(w - half, x)) + 'px'; tip.style.top = (y - 10) + 'px'; }, hide() { tip.hidden = true; } };
+  // content: { title, sub, rows: [[label, value]], notes: [text] }
+  return { show(x, y, { title, sub, rows = [], notes = [] }) {
+    tip.replaceChildren(...[h('div.tt', {}, title, sub ? h('span', {}, sub) : null),
+      rows.length ? h('dl', {}, rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null, ...notes.map(t => h('div.tn', {}, t))].filter(Boolean));
+    tip.hidden = false; const w = host.clientWidth, half = tip.offsetWidth / 2; tip.style.left = Math.max(half, Math.min(w - half, x)) + 'px'; tip.style.top = (y - 10) + 'px'; }, hide() { tip.hidden = true; } };
 }
 let allMonths = false;
-// the curve: idle drain at every checkup, against the healthy band
-function trendCurve(host, pts) {
-  const W = host.clientWidth || 600, H = W < 520 ? 210 : 240, m = { l: 12, r: 12, t: 44, b: 34 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
-  const ts = pts.map(p => +new Date(p.c.takenAt)), t0 = ts[0], t1 = ts[ts.length - 1], padT = (t1 - t0) * 0.06;
+// a curve of one figure at every checkup; `band` draws the healthy zone below a limit
+function trendCurve(host, pts, { title, get, unit, band, aria }, tip, box) {
+  const W = host.clientWidth || 600, H = W < 520 ? 190 : 210, m = { l: 12, r: 12, t: 62, b: 34 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const ts = pts.map(p => +new Date(p.c.takenAt)), t0 = ts[0], t1 = ts[ts.length - 1], padT = (t1 - t0) * 0.06 || 1;
   const x = t => m.l + (t - (t0 - padT)) / (t1 - t0 + 2 * padT) * pw;
-  const top = Math.max(...pts.map(p => p.c.idle.pctPerHour), ok) * 1.15, y = v => m.t + ph - v / top * ph;
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Idle drain at each checkup: ${pts.map(p => `${day(p.c.takenAt)} ${n1(p.c.idle.pctPerHour)}% per hour`).join(', ')}. Healthy is under ${ok}%.` }, host);
-  s('rect', { x: m.l, y: y(ok), width: pw, height: y(0) - y(ok), fill: 'var(--soft)' }, svg);
-  s('line', { x1: m.l, x2: m.l + pw, y1: y(ok), y2: y(ok), stroke: 'var(--accent)', 'stroke-width': 1, opacity: .7 }, svg);
-  s('text', { x: m.l + 10, y: y(0) - 9, class: 'z' }, svg, `Healthy: under ${ok}% an hour`);
-  s('polyline', { points: pts.map((p, k) => `${x(ts[k])},${y(p.c.idle.pctPerHour)}`).join(' '), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
-  const few = pts.length <= 6, vs = pts.map(p => p.c.idle.pctPerHour), lo = vs.indexOf(Math.min(...vs)), hi = vs.indexOf(Math.max(...vs));
+  const vs = pts.map(p => get(p.c)), top = Math.max(...vs, band ?? 0) * 1.15, y = v => m.t + ph - v / top * ph;
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `${aria}: ${pts.map((p, k) => `${day(p.c.takenAt)} ${n1(vs[k])}${unit}`).join(', ')}.` }, host);
+  s('text', { x: m.l, y: 16, class: 'h' }, svg, title);
+  if (band != null) {
+    s('rect', { x: m.l, y: y(band), width: pw, height: y(0) - y(band), fill: 'var(--soft)' }, svg);
+    s('line', { x1: m.l, x2: m.l + pw, y1: y(band), y2: y(band), stroke: 'var(--accent)', 'stroke-width': 1, opacity: .7 }, svg);
+    s('text', { x: m.l + 10, y: y(0) - 9, class: 'z' }, svg, `Healthy: under ${band}% an hour`);
+  } else s('line', { x1: m.l, x2: m.l + pw, y1: y(0), y2: y(0), stroke: 'var(--soft)', 'stroke-width': 1 }, svg);
+  s('polyline', { points: pts.map((p, k) => `${x(ts[k])},${y(vs[k])}`).join(' '), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+  const few = pts.length <= 6, lo = vs.indexOf(Math.min(...vs)), hi = vs.indexOf(Math.max(...vs));
   pts.forEach((p, k) => {
     const cx = x(ts[k]), cy = y(vs[k]), edge = cx < 48 ? 'start' : cx > W - 48 ? 'end' : 'middle', ends = k === 0 || k === pts.length - 1;
     if (rough(p.c)) s('circle', { cx, cy, r: few ? 7 : 4.5, fill: 'var(--bg)', stroke: 'var(--accent)', 'stroke-width': few ? 3 : 2 }, svg);
     else s('circle', { cx, cy, r: few ? 8 : 5, fill: 'var(--accent)', stroke: 'var(--bg)', 'stroke-width': few ? 3 : 2 }, svg);
-    if (few || ends || k === lo || k === hi) s('text', { x: edge === 'start' ? Math.max(cx - 6, 2) : edge === 'end' ? Math.min(cx + 6, W - 2) : cx, y: cy - 18, class: 'v', 'text-anchor': edge }, svg, n1(vs[k]));
+    if (few || ends || ((k === lo || k === hi) && k > 1 && k < pts.length - 2)) s('text', { x: edge === 'start' ? Math.max(cx - 6, 2) : edge === 'end' ? Math.min(cx + 6, W - 2) : cx, y: cy - 18, class: 'v', 'text-anchor': edge }, svg, n1(vs[k]));
     if (ends) s('text', { x: cx, y: H - 8, 'text-anchor': edge }, svg, day(p.c.takenAt));
+    const hit = s('circle', { cx, cy, r: 14, fill: 'transparent' }, svg);   // hovering a point names its date
+    hit.addEventListener('mouseenter', () => { const r = hit.getBoundingClientRect(), o = box.getBoundingClientRect(); tip.show(r.left - o.left + r.width / 2, r.top - o.top + 4, { title: longDay(p.c.takenAt) }); });
+    hit.addEventListener('mouseleave', () => tip.hide());
   });
 }
 function timeline(host) {
@@ -269,8 +302,10 @@ function timeline(host) {
   const times = [...pts.map(p => +new Date(p.c.takenAt)), ...sorted.map(c => +new Date(c.at))];
   const a = new Date(Math.min(...times)), b = new Date(Math.max(...times)), months = [];
   for (let y = b.getFullYear(), m = b.getMonth(); y > a.getFullYear() || (y === a.getFullYear() && m >= a.getMonth()); m ? m-- : (y--, m = 11)) months.push([y, m]);
-  if (pts.length > 1) { const tr = h('div.tr'); host.append(tr); trendCurve(tr, pts); }
   const tip = tooltip(host);
+  const stPts = pts.filter(p => p.c.screenTime != null);
+  if (stPts.length > 1) { const tr = h('div.tr'); host.append(tr); trendCurve(tr, stPts, { title: 'Screen time from a full charge, in hours', get: c => c.screenTime, unit: ' h', aria: 'Screen time from a full charge at each checkup' }, tip, host); }
+  if (pts.length > 1) { const tr = h('div.tr'); host.append(tr); trendCurve(tr, pts, { title: 'Screen-off drain, in % an hour', get: c => c.idle.pctPerHour, unit: '% per hour', band: ok, aria: `Idle drain at each checkup, healthy is under ${ok}%` }, tip, host); }
   const hover = (el, lines) => {
     const show = () => { const r = el.getBoundingClientRect(), o = host.getBoundingClientRect(); tip.show(r.left - o.left + r.width / 2, r.top - o.top, lines); };
     for (const e of ['mouseenter', 'focus']) el.addEventListener(e, show);
@@ -286,22 +321,25 @@ function timeline(host) {
       const date = new Date(y, m, d), p = byDay[key(date)], ch = chByDay[key(date)] || [];
       const mark = ch.length ? h('span.dm', {}, ch.length > 1 ? `${ch[0][1]}–${ch[ch.length - 1][1]}` : String(ch[0][1])) : null;
       const changes = ch.map(q => changeText(q[0]));
-      if (!p) { const el = h('div.day', ch.length ? { tabindex: 0, 'aria-label': `${day(date)}: ${changes.join('; ')}` } : { 'aria-hidden': 'true' }, h('span', {}, d), mark); if (ch.length) hover(el, [day(date), ...changes]); cells.push(el); continue; }
-      const v = p.c.idle.pctPerHour, cur = p.i === sel;
+      if (!p) { const el = h('div.day', ch.length ? { tabindex: 0, 'aria-label': `${day(date)}: ${changes.join('; ')}` } : { 'aria-hidden': 'true' }, h('span', {}, d), mark); if (ch.length) hover(el, { title: longDay(date), notes: changes }); cells.push(el); continue; }
+      const v = p.c.idle.pctPerHour, st = p.c.screenTime, cur = p.i === sel;
       const el = h('button.day.has' + (rough(p.c) ? '.rough' : v <= ok ? '.ok' : '') + (cur ? '.cur' : ''), { type: 'button', 'aria-pressed': String(cur),
-        'aria-label': `${dayTime(p.c.takenAt)}: ${n1(v)}% per hour while idle${changes.length ? '. ' + changes.join('; ') : ''}`,
-        on: { click: () => { sel = p.i; phone(); renderDetails(true); timeline(host); } } }, h('span', {}, d), h('span.dv', {}, n1(v)), mark);
-      hover(el, [dayTime(p.c.takenAt), `${n1(v)}% per hour idle`, p.c.idle.hours != null ? `Measured over ${n1(p.c.idle.hours)} h with the screen off` : null, ...changes].filter(Boolean));
+        'aria-label': `${dayTime(p.c.takenAt)}: ${st != null ? `${n1(st)} hours of screen time from a full charge, ` : ''}${n1(v)}% per hour while idle${changes.length ? '. ' + changes.join('; ') : ''}`,
+        on: { click: () => { sel = p.i; phone(); renderDetails(true); timeline(host); } } }, h('span', {}, d), st != null ? h('span.dv', {}, n1(st), h('small', {}, ' h')) : null, h('span' + (st != null ? '.di' : '.dv'), {}, `${n1(v)}%`), mark);
+      hover(el, { title: longDay(p.c.takenAt), sub: hm(p.c.takenAt),
+        rows: [st != null ? ['Screen time per charge', `${n1(st)} h`] : null, ['Screen-off drain', `${n1(v)}% an hour`], p.c.idle.hours != null ? ['Screen off for', `${n1(p.c.idle.hours)} h`] : null].filter(Boolean),
+        notes: [rough(p.c) ? 'A short period, so these figures are rough.' : null, ...changes].filter(Boolean) });
       cells.push(el);
     }
     host.append(h('div.cal', {}, h('p.cal-m', {}, new Date(y, m, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })), h('div.cal-g', {}, cells)));
   }
   if (months.length > 2) host.append(h('button.showall', { type: 'button', on: { click: () => { allMonths = !allMonths; timeline(host); } } }, allMonths ? 'Show the latest 2 months' : `Show all ${months.length} months`));
-  const notes = [pts.some(p => !rough(p.c) && p.c.idle.pctPerHour <= ok) ? `Filled days are within the healthy limit of ${ok}% an hour.` : null,
+  const notes = [pts.some(p => !rough(p.c) && p.c.idle.pctPerHour <= ok) ? `Filled days are within the healthy limit of ${ok}% an hour with the screen off.` : null,
+    pts.some(p => p.c.screenTime != null) ? 'Each day shows the screen time a full charge gives, and under it the drain per hour with the screen off.' : null,
     pts.some(p => rough(p.c)) ? `Dashed days and hollow points were measured over less than ${D.limits.minIdleHours} h with the screen off, so they are rough.` : null].filter(Boolean);
   const shown = sorted.map((c, k) => [c, k]).slice(-5);
   if (sorted.length || notes.length) host.append(h('ul.notes', {}, notes.map(t => h('li', {}, t)),
-    sorted.length > shown.length ? h('li', {}, `${sorted.length - shown.length} earlier changes are listed under Details.`) : null,
+    sorted.length > shown.length ? h('li', {}, sorted.length - shown.length === 1 ? '1 earlier change is listed under Details.' : `${sorted.length - shown.length} earlier changes are listed under Details.`) : null,
     shown.map(([c, k]) => h('li', {}, h('b', {}, `${k + 1}.`), `${day(c.at)}: ${changeText(c)}`))));
 }
 
@@ -317,10 +355,9 @@ function fixes() {
   const f = latest.findings || {}, rank = { high: 0, medium: 1, info: 2 };
   const flags = latest.flags.slice().sort((a, b) => rank[a.severity] - rank[b.severity]);
   const top = flags.find(x => x.severity !== 'info') || flags[0];
-  const items = [], seen = new Set(); let n = 0, canApply = false;
+  const items = [], seen = new Set(); let n = 0;
   for (const fl of latest.flags) for (const x of fl.fixes) {
     if (seen.has(x.id)) continue; seen.add(x.id);
-    if (x.kind === 'auto' && !doneBy[x.id]) canApply = true;
     items.push(fixItem({ ...x, title: tidy(x.title) }, ++n, x.steps?.map(tidy)));
   }
   const also = flags.filter(x => x !== top && !x.fixes.length);
@@ -331,7 +368,6 @@ function fixes() {
     top ? h('p.lead', {}, tidy(f.explanations?.[top.id] || top.detail)) : null,
     worn ? alsoList : null,
     items.length ? h('ul.fixlist', {}, items) : h('p.empty', {}, latest.quality?.ok === false ? 'Too little data in this checkup to suggest fixes.' : 'Nothing to fix from this checkup.'),
-    canApply ? h('p.how', {}, 'To apply a fix, tell your assistant its number, for example "apply F1". Nothing changes until you do, and a change can be undone.') : null,
     worn ? null : alsoList,
   ];
 }
@@ -362,7 +398,7 @@ function curve(host, c) {
     const on = (c.screenSpans || []).some(sp => p[0] >= sp[0] && p[0] <= sp[1]);
     cross.setAttribute('x1', x(p[0])); cross.setAttribute('x2', x(p[0])); dot.setAttribute('cx', x(p[0])); dot.setAttribute('cy', y(p[1]));
     for (const el of [cross, dot]) el.setAttribute('visibility', 'visible');
-    tip.show(x(p[0]) * r.width / W, y(p[1]) * r.height / H - 8, [`${clock(p[0])}: ${p[1]}%`, on ? 'Screen on' : 'Screen off']);
+    tip.show(x(p[0]) * r.width / W, y(p[1]) * r.height / H - 8, { title: `${p[1]}%`, sub: clock(p[0]), notes: [on ? 'Screen on' : 'Screen off'] });
   });
   rect.addEventListener('pointerleave', () => { for (const el of [cross, dot]) el.setAttribute('visibility', 'hidden'); tip.hide(); });
 }
@@ -381,7 +417,7 @@ function detailBody() {
   const sec = (t, ...k) => h('section', {}, h('h3', {}, t), ...k);
   const body = h('div.more-in', {},
     sec(`All checkups (${cs.length})`, h('ul.rows.pick', {}, cs.map((x, i) => [x, i]).reverse().filter(([, i], k) => showAll || k < 5 || i === sel).map(([x, i]) => h('li', {}, h(i === sel ? 'div.cur' : 'button', i === sel ? { 'aria-current': 'true' } : { type: 'button', on: { click: () => { sel = i; phone(); renderDetails(true); if (window.__tl.isConnected) timeline(window.__tl); } } },
-      h('span', {}, dayTime(x.takenAt)), h('span', {}, `${cell(n1(x.idle?.pctPerHour), '%')} idle`), h('span', {}, `${cell(n1(hpc(x)), ' h')} per charge`))))),
+      h('span', {}, dayTime(x.takenAt)), h('span', {}, `${cell(n1(x.screenTime), ' h')} screen time`), h('span', {}, `${cell(n1(x.idle?.pctPerHour), '%')} idle`))))),
       cs.length > 5 ? h('button.showall', { type: 'button', on: { click: () => { showAll = !showAll; renderDetails(true); } } }, showAll ? 'Show the latest 5' : `Show all ${cs.length} checkups`) : null),
     sec(`Checkup on ${dayTime(c.takenAt)}`, h('p.sub', {}, w.hoursOnBattery != null ? `${n1(w.hoursOnBattery)} h on battery, ${w.dischargedPct ?? 0}% used. Shaded: screen on.${b.levelPct != null && c.levels?.length && b.levelPct > c.levels[c.levels.length - 1][1] + 3 ? ` The curve stops where the phone was put on charge; it was at ${b.levelPct}% at the checkup.` : ''}` : ''), lvHost),
     sec(apps.length ? 'Battery used while each app was on screen' : 'Battery used by app, as estimated by Android', rows(apps.length ? apps : est, 'This phone did not report battery use by app.')),
@@ -404,12 +440,18 @@ function renderDetails(keepOpen) {
 }
 
 function readColumn() {
-  const i = latest.idle, a = latest.active, b = latest.battery || {};
-  const bits = [hpc(latest) != null ? `A full charge lasts about ${n1(hpc(latest))} h` : null, a ? `drain in use is ${n1(a.pctPerHour)}% per hour` : null, b.healthPct != null ? `the battery holds ${b.healthPct}% of its capacity` : null].filter(Boolean);
+  const i = latest.idle, b = latest.battery || {};
+  const w = latest.window || {};
+  const split = w.dischargedScreenOnPct != null && w.dischargedScreenOffPct != null && w.screenOnHours != null
+    ? `The screen was on for ${n1(w.screenOnHours)} h and used ${w.dischargedScreenOnPct}% of the battery; ${n1(w.screenOffHours)} h with the screen off used ${w.dischargedScreenOffPct}%.` : null;
+  const bits = [split ? null : hpc(latest) != null ? `A full charge lasts about ${n1(hpc(latest))} h` : null, b.healthPct != null ? `the battery holds ${b.healthPct}% of its capacity` : null].filter(Boolean);
   const r = i ? i.pctPerHour / ok : null;
   const versus = r == null ? null : r <= 1 ? `Screen-off drain is within the healthy limit of ${ok}% an hour.`
     : `Screen-off drain is ${r >= 1.75 && r < 2.25 ? 'about twice' : r < 1.25 ? 'just over' : `about ${n1(r)} times`} the healthy limit of ${ok}% an hour.`;
-  const line = [versus, bits.length ? bits.join(', ').replace(/^./, m => m.toUpperCase()) + '.' : null].filter(Boolean).join(' ') || null;
+  const before = cs.slice(0, -1).reverse().find(c => c.screenTime != null);
+  const mix = latest.screenTime != null && before && mixDiffers(latest, before)
+    ? `The screen was on ${Math.round(onShare(latest) * 100)}% of the time, against ${Math.round(onShare(before) * 100)}% at the checkup before, so the two screen-time figures are not a like-for-like comparison.` : null;
+  const line = [split, mix, versus, bits.length ? bits.join(', ').replace(/^./, m => m.toUpperCase()) + '.' : null].filter(Boolean).join(' ') || null;
   const trend = cs.some(c => c.idle);
   const trendBox = h('div.tl');
   const more = h('details.more', { id: 'more', open: '' });
@@ -417,7 +459,7 @@ function readColumn() {
     h('div.hero', {}, h('h1', {}, verdict()), line ? h('p.line', {}, line) : null,
       latest.quality?.ok === false ? h('p.notice', { role: 'note' }, (latest.quality.reasons || []).join(' ')) : null),
     h('section.sec.focus', { 'aria-labelledby': 'h-fx' }, h('h2', { id: 'h-fx' }, 'What to fix next'), ...fixes()),
-    trend ? h('section.sec', { 'aria-labelledby': 'h-tl' }, h('h2', { id: 'h-tl' }, 'Idle drain, day by day'), trendBox) : null,
+    trend ? h('section.sec', { 'aria-labelledby': 'h-tl' }, h('h2', { id: 'h-tl' }, 'Day by day'), trendBox) : null,
     more].filter(Boolean));
   window.__tl = trendBox;
   if (trend) timeline(trendBox);
