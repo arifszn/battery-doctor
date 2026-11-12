@@ -40,15 +40,18 @@
 .focus summary:hover { color: var(--panel-ink); }
 .focus :focus-visible { outline-color: var(--panel-ink); }
 
-/* the plan: what the next checkup tests and what is still open */
-.plan { margin-top: 16px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 4px 24px; }
-.plan > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 20px; padding: 16px 0; border-top: 1px solid var(--line); }
-.plan > div:first-child { border-top: 0; }
-.plan h3 { font: 600 var(--t3)/1.6 var(--font); color: var(--muted); margin: 0; }
-.plan ul { display: grid; gap: 6px; }
-.plan .why { display: block; font-size: var(--t3); color: var(--muted); }
+/* the plan: what the next checkup tests and what is still open, one line per item with a tag */
+.plan { margin-top: 16px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r); padding: 8px 22px; }
+.pl > li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 6px 16px; padding: 14px 0; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.55; }
+.pl > li:first-child { border-top: 0; }
+.pl .tag { justify-self: start; align-self: start; font: 600 12px/1 var(--font); padding: 6px 9px; border-radius: 999px; background: var(--soft); color: var(--ink-2); margin-top: 1px; white-space: nowrap; }
+.pl .tag.now { background: var(--data); color: var(--data-ink); }
+.pl .tag.due { background: var(--band); color: var(--ink); }
+.pl b { font-weight: 600; }
+.pl .muted { color: var(--muted); }
+.plan .why { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
 .plan-at { margin-top: 4px; font-size: var(--t3); color: var(--muted); }
-@media (max-width: 560px) { .plan { padding: 4px 16px; } .plan > div { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .plan { padding: 6px 16px; } .pl > li { grid-template-columns: minmax(0, 1fr); } }
 
 /* details as cards: two wide cards, then pairs */
 .more-in { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
@@ -85,7 +88,7 @@ small, .small { font-size: var(--t3); }
 .hero { padding: clamp(48px, 9svh, 96px) 0 0; }
 h1 { font-weight: var(--h1-w, 600); font-size: var(--t1); line-height: 1.08; letter-spacing: var(--h1-track, -.025em); max-width: none; text-wrap: pretty; }
 .line { margin-top: 20px; color: var(--ink-2, var(--muted)); max-width: 36em; }
-.notice { margin-top: 16px; color: var(--warn); font-size: var(--t3); }
+.notice { margin-top: 16px; max-width: 62ch; padding: 12px 16px; border-radius: 10px; background: var(--soft); color: var(--ink-2); font-size: var(--t3); line-height: 1.55; }
 .sec { margin-top: clamp(56px, 7vw, 88px); }
 h2 { font-weight: 600; font-size: var(--h2); line-height: 1.25; letter-spacing: -.01em; }
 .lead { margin-top: 12px; color: var(--ink-2, var(--ink)); }
@@ -271,7 +274,7 @@ function verdict() {
     return `A full charge now gives about ${now} of screen time, ${st > pst.screenTime ? 'up' : 'down'} from ${n1(pst.screenTime)} h.`;
   }
   const i = latest.idle;
-  if (!i) return 'This checkup could not measure idle drain.';
+  if (!i) return latest.quality?.ok === false ? 'Not enough data yet.' : 'This checkup could not measure idle drain.';
   const prev = cs.slice(0, -1).reverse().find(c => c.idle);
   if (prev && (rough(latest) || rough(prev))) return `Idle drain is ${n1(i.pctPerHour)}% an hour.`;   // no direction claimed from a rough figure
   if (prev && n1(prev.idle.pctPerHour) === n1(i.pctPerHour)) return `Idle drain is steady at ${n1(i.pctPerHour)}% an hour.`;
@@ -300,10 +303,20 @@ function phone() {
   s('rect', { x: 289.5, y: 45, width: 2.5, height: 5, rx: 1, style: 'fill:var(--ph-ink)' }, g);
   if (b.levelPct != null) s('rect', { x: 264.5, y: 43.5, width: 21 * lvl / 100, height: 8, rx: 2, style: 'fill:var(--ph-ink)' }, g);
   const st = c.screenTime, w = c.window || {};
-  s('text', { x: 34, y: 122, 'font-size': 14, class: 'm' }, g, st != null ? 'Screen time from a full charge' : 'Screen off, drain per hour');
-  const big = s('text', { x: 30, y: 206, 'font-size': 92, class: 'ser' }, g, st != null ? n1(st) : idle ? n1(idle.pctPerHour) : '\u2013');
-  s('tspan', { dx: 8, 'font-size': 24, class: 'm' }, big, st != null ? 'h' : '%');
-  s('text', { x: 34, y: 234, 'font-size': 14, class: 'm' }, g, st != null ? `This period: ${n1(w.screenOnHours)} h of screen, ${w.dischargedPct}% used` : `Healthy is under ${ok}%`);
+  // a checkup too short to give either figure says so instead of showing empty numbers
+  const empty = st == null && !idle;
+  if (empty) {
+    s('text', { x: 34, y: 152, 'font-size': 34, class: 'ser' }, g, 'Not enough');
+    s('text', { x: 34, y: 192, 'font-size': 34, class: 'ser' }, g, 'data yet');
+    s('text', { x: 34, y: 230, 'font-size': 14, class: 'm' }, g, `${n1(w.hoursOnBattery ?? 0)} h on battery, ${w.dischargedPct ?? 0}% used.`);
+    s('text', { x: 34, y: 254, 'font-size': 14, class: 'm' }, g, 'Check again after most of a day');
+    s('text', { x: 34, y: 274, 'font-size': 14, class: 'm' }, g, 'unplugged, before charging.');
+  } else {
+    s('text', { x: 34, y: 122, 'font-size': 14, class: 'm' }, g, st != null ? 'Screen time from a full charge' : 'Screen off, drain per hour');
+    const big = s('text', { x: 30, y: 206, 'font-size': 92, class: 'ser' }, g, st != null ? n1(st) : n1(idle.pctPerHour));
+    s('tspan', { dx: 8, 'font-size': 24, class: 'm' }, big, st != null ? 'h' : '%');
+    s('text', { x: 34, y: 234, 'font-size': 14, class: 'm' }, g, st != null ? `This period: ${n1(w.screenOnHours)} h of screen, ${w.dischargedPct}% used` : `Healthy is under ${ok}%`);
+  }
   if (lv.length > 1) {
     const end = Math.max(lv[lv.length - 1][0], 1), X = t => 30 + t / end * 260, Y = v => 480 - v / 100 * 150;
     s('text', { x: 30, y: 316, 'font-size': 14, class: 'm' }, g, `Battery level, down to ${lv[lv.length - 1][1]}%`);
@@ -319,8 +332,10 @@ function phone() {
     s('text', { x: 30, y: 552, 'font-size': 14, class: 'm' }, g, 'Screen off, drain per hour');
     s('text', { x: 290, y: 552, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, `${n1(idle.pctPerHour)}%`);
   }
-  s('text', { x: 30, y: 588, 'font-size': 14, class: 'm' }, g, 'A full charge lasts about');
-  s('text', { x: 290, y: 588, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, hpc(c) != null ? `${n1(hpc(c))} h` : '–');
+  if (hpc(c) != null) {
+    s('text', { x: 30, y: 588, 'font-size': 14, class: 'm' }, g, 'A full charge lasts about');
+    s('text', { x: 290, y: 588, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, `${n1(hpc(c))} h`);
+  }
   s('rect', { x: 125, y: 638, width: 70, height: 4, rx: 2, style: 'fill:var(--ph-bar)' }, g);
   s('circle', { cx: 160, cy: 30, r: 7, style: 'fill:var(--ph-cam)' }, svg);
   stage.replaceChildren(svg, h('p.phone-name', {}, [maker(latest.device), latest.device?.android ? `Android ${latest.device.android}` : ''].filter(Boolean).join(', ')));
@@ -467,15 +482,15 @@ function fixes() {
 // written by the assistant: text nodes only
 function planBlock() {
   const p = D.plan; if (!p) return null;
-  const nc = p.nextCheckup, row = (t, items) => items.length ? h('div', {}, h('h3', {}, t), h('ul', {}, items.map(x => h('li', {}, ...[].concat(x))))) : null;
+  const nc = p.nextCheckup, li = (tag, cls, ...k) => h('li', {}, h('span.tag' + cls, {}, tag), h('div', {}, ...k));
   return [
     h('p.plan-at', {}, `Written ${dayTime(p.updatedAt)}${latest.takenAt > p.updatedAt ? ', before the latest checkup' : ''}.`),
-    h('div.plan', {},
-      row('Testing now', p.testing ? [p.testing] : []),
-      row('Next checkup', nc ? [[nc.after ? `After ${nc.after}` : null, nc.after && nc.how ? '. ' : null, nc.how].filter(Boolean).join('')] : []),
-      row('To decide', p.decide),
-      row('To look into', p.investigate),
-      row('Not doing', p.notDoing.map(x => [x.what, x.why ? h('span.why', {}, x.why) : null]))),
+    h('div.plan', {}, h('ul.pl', {},
+      p.testing ? li('Testing', '.now', p.testing) : null,
+      nc ? li('Next checkup', '.due', nc.after ? h('b', {}, `${nc.after}${nc.how ? '. ' : ''}`) : null, nc.how) : null,
+      ...p.decide.map(x => li('Decide', '', x)),
+      ...p.investigate.map(x => li('Look into', '', x)),
+      ...p.notDoing.map(x => li('Not doing', '', h('span.muted', {}, x.what), x.why ? h('span.why', {}, x.why) : null)))),
   ];
 }
 
@@ -552,7 +567,7 @@ function renderDetails(keepOpen) {
 function readColumn() {
   const i = latest.idle, b = latest.battery || {};
   const w = latest.window || {};
-  const split = w.dischargedScreenOnPct != null && w.dischargedScreenOffPct != null && w.screenOnHours != null
+  const split = (w.dischargedPct ?? 0) > 0 && w.dischargedScreenOnPct != null && w.dischargedScreenOffPct != null && w.screenOnHours != null
     ? `The screen was on for ${n1(w.screenOnHours)} h and used ${w.dischargedScreenOnPct}% of the battery; ${n1(w.screenOffHours)} h with the screen off used ${w.dischargedScreenOffPct}%.` : null;
   const bits = [split ? null : hpc(latest) != null ? `A full charge lasts about ${n1(hpc(latest))} h` : null, b.healthPct != null ? `the battery holds ${b.healthPct}% of its capacity` : null].filter(Boolean);
   const r = i ? i.pctPerHour / ok : null;
