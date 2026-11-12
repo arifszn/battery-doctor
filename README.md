@@ -1,6 +1,6 @@
 # battery-doctor
 
-An agent skill that finds what drains your Android phone's battery, fixes what you agree to, and shows whether it got better.
+An agent skill that finds what drains your Android phone's battery, fixes it, and shows whether it got better.
 
 You plug the phone into your computer and ask your AI assistant to check the battery. The skill investigates the phone's own records: what woke it, which apps ran in the background, which kept a sensor, Bluetooth scan or location request going, and how fast the battery fell with the screen off. It names the causes in plain words and writes a report you open in your browser.
 
