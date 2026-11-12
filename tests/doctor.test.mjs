@@ -227,7 +227,7 @@ test('a checkup saved by an older version is read again from its raw dumps', () 
   const { offByHour, restrictions, ...old } = JSON.parse(fs.readFileSync(file, 'utf8'));
   fs.writeFileSync(file, JSON.stringify({ ...old, version: 1 }));
   assert.ok(reportData(dir).checkups[0].offByHour);
-  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 3);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 4);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {
@@ -305,6 +305,28 @@ test('a period that crosses New Year keeps its timeline', () => {
   const a = summarize(writeDumps(tmpDir(), dumps), AT), b = summarize(writeDumps(tmpDir(), shifted), '2027-01-01T07:00:00.000Z');
   assert.deepEqual(b.idle, a.idle);
   assert.deepEqual(b.levels, a.levels);
+});
+
+test('plugging in for a checkup does not end the period, a recharge does', () => {
+  const dumps = fakeDumps();
+  const lines = dumps['history.txt'].split('\n');
+  const at = hhmm => lines.findIndex(l => l.includes(`11-03 ${hhmm}:00.000`));
+  const lvl = +lines[at('10:00')].trim().split(/\s+/)[2];
+  // a connection from 10:00:30 to 10:05:30 (or 11:00:30) that leaves the level as it was (or adds 20%)
+  const withPlug = (until, rise) => {
+    const out = [...lines];
+    out.splice(at(until) + 1, 0, `  11-03 ${until}:30.000 ${String(lvl + rise).padStart(3, '0')} status=discharging plug=none`);
+    out.splice(at('10:00') + 1, 0, `  11-03 10:00:30.000 ${String(lvl).padStart(3, '0')} status=charging plug=usb`);
+    return { ...dumps, 'history.txt': out.join('\n') };
+  };
+  const base = summarize(writeDumps(tmpDir(), dumps), AT);
+  const brief = summarize(writeDumps(tmpDir(), withPlug('10:05', 0)), AT);
+  const charged = summarize(writeDumps(tmpDir(), withPlug('11:00', 20)), AT);
+  const end = s => s.levels[s.levels.length - 1][0];
+  assert.equal(end(brief), end(base));
+  assert.ok(end(charged) <= 2.01, `curve should stop at the recharge, ended at ${end(charged)} h`);
+  const off = s => s.offByHour.reduce((a, x) => a + x[0], 0);
+  assert.ok(off(brief) > off(charged));
 });
 
 test('long periods and battery saver are pointed out', () => {

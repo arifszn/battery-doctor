@@ -132,12 +132,13 @@ function wakeups(bs) {
 
 // Walk the history: average current by screen state and foreground app, plus the level curve.
 // Handles absolute timestamps (Samsung: "11-12 00:27:58.261 100 ...") and AOSP relative ones ("+1h02m03s456ms (2) 085 ...").
+const SHORT_PLUG_SEC = 600;
 function history(file, design) {
   if (!fs.existsSync(file)) return null;
   const acc = new Map();
   const add = (k, dt, cur) => { const a = acc.get(k) || [0, 0]; a[0] += dt; a[1] += dt * cur; acc.set(k, a); };
   const levels = [], screens = [];
-  let scr = false, top = null, cur = null, last = null, plug = false, recharged = false, t0 = null, lastLevel = null, scrStart = null, year = new Date().getFullYear(), samples = 0;
+  let scr = false, top = null, cur = null, last = null, plug = false, recharged = false, plugAt = null, plugLevel = null, t0 = null, lastLevel = null, scrStart = null, year = new Date().getFullYear(), samples = 0;
   // Screen-off time per hour of the day (phone clock): [seconds, mA·seconds measured, % of battery dropped, seconds with a current reading].
   // Absolute stamps are the phone clock already; relative ones count from the RESET:TIME line.
   const byHour = Array.from({ length: 24 }, () => [0, 0, 0, 0]);
@@ -165,7 +166,14 @@ function history(file, design) {
     const c = /\bcurrent=(-?\d+)/.exec(rest);
     if (c) { samples++; cur = +c[1] < 0 ? -c[1] : null; }
     const p = /\bplug=(\w+)/.exec(rest);
-    if (p) { plug = p[1] !== 'none'; if (plug && levels.length > 1) recharged = true; }   // the curve ends at the first recharge
+    // The curve ends at the first recharge. Plugging in for a checkup is not one: a connection of up to
+    // SHORT_PLUG_SEC that raised the level by at most 1% leaves the period going.
+    if (p) {
+      const now = p[1] !== 'none';
+      if (now && !plug) { plugAt = t; plugLevel = lastLevel ?? level; }
+      if (!now && plug && plugAt != null && levels.length > 1 && (t - plugAt > SHORT_PLUG_SEC || level - plugLevel > 1)) recharged = true;
+      plug = now;
+    }
     if (/(^|\s)\+screen(\s|$)/.test(rest) && !scr) { scr = true; scrStart = t; }
     if (/(^|\s)-screen(\s|$)/.test(rest) && scr) { scr = false; if (scrStart != null) screens.push([round((scrStart - t0) / HOUR, 2), round((t - t0) / HOUR, 2)]); }
     const tp = /\+top=\w+:"([^"]+)"/.exec(rest);
@@ -288,7 +296,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   else if (w?.dischargedScreenOnPct != null && w.screenOnHours >= 0.5) active = { pctPerHour: round(w.dischargedScreenOnPct / w.screenOnHours, 1), ma: null, hours: w.screenOnHours };
 
   return {
-    version: 3, takenAt, device: device(read), battery: b, window: w,
+    version: 4, takenAt, device: device(read), battery: b, window: w,
     rebootedInWindow: upHours != null && w ? upHours < w.hoursOnBattery - 0.2 : null, uptimeHours: round(upHours),
     hoursPerCharge: w?.dischargedPct >= 5 ? round(w.hoursOnBattery / w.dischargedPct * 100) : null,
     idle, active,
