@@ -23,6 +23,7 @@ The phone does record all of it. The records are only reachable over USB and are
 ## What you need
 
 - An Android phone and a USB cable that carries data
+- USB debugging turned on in the phone's Developer options
 - A computer running macOS, Windows or Linux
 - An AI coding assistant that supports skills and can run commands (Claude Code, Codex, OpenCode, Gemini CLI, Cursor and others)
 - [Node.js](https://nodejs.org) 18 or later
