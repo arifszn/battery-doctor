@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // battery-doctor: check an Android phone's battery drain over USB. Needs Node 18+, nothing else.
 //   node doctor.mjs status            is adb here, is a phone connected and authorized
+//   node doctor.mjs guide             open the picture guide for turning on USB debugging
 //   node doctor.mjs get-adb           download Google's adb (only after the user agrees)
 //   node doctor.mjs check             take a checkup, print the summary, build the report
 //   node doctor.mjs report            rebuild the HTML report from saved checkups
@@ -15,7 +16,7 @@ import { collect } from './lib/collect.mjs';
 import { summarize } from './lib/parse.mjs';
 import { evaluate, quality, fixList } from './lib/rules.mjs';
 import { apply, undo, readLog, ACTIONS, SETTINGS } from './lib/fixes.mjs';
-import { buildReport, loadCheckups, openInBrowser } from './lib/report.mjs';
+import { buildReport, loadCheckups, openInBrowser, ASSETS } from './lib/report.mjs';
 
 const [cmd, ...rest] = process.argv.slice(2);
 const flags = new Set(rest.filter(a => a.startsWith('--')));
@@ -102,7 +103,7 @@ const commands = {
     if (!bin) { say('adb: NOT INSTALLED'); say(`next: ask the user, then run "node doctor.mjs get-adb" (downloads ${DOWNLOAD_URL})`); return; }
     say(`adb: ${bin}`);
     const list = devices(bin);
-    if (!list.length) { say('phone: NOT FOUND'); say('next: follow references/setup-phone.md'); return; }
+    if (!list.length) { say('phone: NOT FOUND'); say('next: run "node doctor.mjs guide" to show the user the picture guide, and follow references/setup-phone.md'); return; }
     for (const d of list) {
       if (d.state !== 'device') { say(`phone: ${d.serial} is ${d.state.toUpperCase()}`); say('next: unlock the phone and tap Allow on the USB debugging prompt'); continue; }
       const p = k => shell(bin, d.serial, `getprop ${k}`).out.trim();
@@ -110,6 +111,12 @@ const commands = {
       const dir = deviceDir(bin, d.serial);
       say(`checkups saved: ${loadCheckups(dir).length}, changes made: ${readLog(dir).filter(e => !e.undoneAt).length}`);
     }
+  },
+
+  guide() {
+    const file = path.join(ASSETS, 'setup-guide.html');
+    say(`guide: ${file}`);
+    if (!flags.has('--no-open')) openInBrowser(file);
   },
 
   async 'get-adb'() {
@@ -180,5 +187,5 @@ const commands = {
   },
 };
 
-if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 10).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
+if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 11).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
 try { await commands[cmd](); } catch (e) { fail(e.message); }

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Connect your phone</title>
+<style>
+:root {
+  --bg: #eeecea; --field: #cdc3b6; --ink: #333231; --muted: #5e5a56; --soft: #e1ded9; --screen: #f7f6f4;
+  --accent: #3f6b3a; --accent-ink: #ffffff;
+  --font: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --t1: clamp(30px, 2rem + .9vw, 46px); --t2: 18px; --t3: 15px;
+  --pad: clamp(22px, 5vw, 72px);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1b1a19; --field: #2b2926; --ink: #ecebe9; --muted: #b0aca6; --soft: #2a2927; --screen: #232221; --accent: #9fcb92; --accent-ink: #1b1a19; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--t2)/1.6 var(--font); overflow-x: hidden; }
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+main { max-width: 980px; margin: 0 auto; padding: clamp(48px, 10svh, 96px) var(--pad) 96px; }
+h1 { font-weight: 500; font-size: var(--t1); line-height: 1.12; letter-spacing: -.02em; max-width: 14em; }
+.line { margin-top: 24px; color: var(--muted); max-width: 34em; }
+
+.brands { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.brands span { color: var(--muted); margin-right: 6px; }
+.brands button { padding: 6px 16px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--muted); font-size: var(--t3); }
+.brands button[aria-pressed="true"] { background: var(--ink); color: var(--bg); box-shadow: none; }
+
+.steps { list-style: none; margin-top: 16px; }
+.step { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: clamp(24px, 6vw, 80px); align-items: center; padding: clamp(40px, 6vw, 64px) 0; border-bottom: 1px solid var(--soft); }
+.num { font-size: var(--t3); color: var(--accent); font-weight: 600; letter-spacing: .04em; }
+h2 { font-weight: 500; font-size: clamp(24px, 1.4rem + .5vw, 32px); line-height: 1.2; letter-spacing: -.01em; margin-top: 6px; }
+.step p { margin-top: 14px; max-width: 30em; }
+.step p.muted, .muted { color: var(--muted); }
+.path { font-weight: 600; }
+[data-b] { display: none; }
+body[data-brand="samsung"] [data-b~="samsung"], body[data-brand="pixel"] [data-b~="pixel"],
+body[data-brand="oneplus"] [data-b~="oneplus"], body[data-brand="other"] [data-b~="other"] { display: revert; }
+
+/* the phone drawing */
+.ph { background: var(--field); border-radius: 18px; padding: 22px 0; display: flex; justify-content: center; }
+.dev { width: 190px; height: 380px; border-radius: 28px; background: var(--screen); box-shadow: 0 0 0 5px var(--ink), 0 18px 30px -18px rgba(0,0,0,.5); position: relative; overflow: hidden; font: 400 11px/1.3 var(--ui); color: var(--ink); padding: 26px 12px 12px; }
+.dev::before { content: ""; position: absolute; top: 9px; left: 50%; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--ink); opacity: .8; }
+.dev .ttl { font-size: 15px; font-weight: 600; margin: 8px 4px 10px; }
+.row { padding: 8px 8px; border-radius: 9px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.row small { display: block; color: var(--muted); font-size: 9.5px; }
+.row + .row { margin-top: 2px; }
+.row.dim { opacity: .38; }
+.row.hit { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); position: relative; }
+.tap { position: absolute; right: 18px; top: 50%; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; background: var(--accent); opacity: .35; box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 25%, transparent); }
+.x7 { font-weight: 700; color: var(--accent); font-size: 12px; white-space: nowrap; }
+.sw { flex: none; width: 26px; height: 15px; border-radius: 8px; background: var(--muted); position: relative; opacity: .5; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--screen); }
+.sw.on { background: var(--accent); opacity: 1; }
+.sw.on::after { left: 13px; }
+.toast { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 6px 12px; border-radius: 999px; white-space: nowrap; font-size: 10px; }
+.shade { position: absolute; inset: 0; background: rgba(0,0,0,.35); }
+.dlg { position: absolute; left: 12px; right: 12px; bottom: 16px; background: var(--screen); border-radius: 16px; padding: 14px 14px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.dlg b { display: block; font-size: 12.5px; margin-bottom: 6px; }
+.dlg .ck { display: flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--muted); }
+.dlg .ck i { flex: none; width: 11px; height: 11px; border-radius: 3px; background: var(--accent); }
+.dlg .btns { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; align-items: center; }
+.dlg .btns span { padding: 5px 10px; border-radius: 999px; color: var(--muted); }
+.dlg .btns .go { background: var(--accent); color: var(--accent-ink); font-weight: 600; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
+.cable { position: absolute; left: 50%; bottom: -4px; width: 26px; height: 16px; margin-left: -13px; border-radius: 4px 4px 0 0; background: var(--ink); }
+.lock { text-align: center; margin-top: 70px; }
+.lock .clock { font: 300 44px/1 var(--ui); }
+.lock p { margin-top: 10px; color: var(--muted); }
+
+.help { margin-top: clamp(56px, 7vw, 88px); max-width: 34em; }
+.help h2 { font-size: var(--t1); }
+.help ol { margin: 20px 0 0 1.3em; }
+.help li { margin-top: 10px; padding-left: 6px; }
+.help li::marker { color: var(--accent); font-weight: 600; }
+.after { margin-top: 48px; color: var(--muted); max-width: 34em; }
+
+@media (max-width: 700px) {
+  .step { grid-template-columns: 1fr; }
+  .ph { order: 2; }
+}
+</style>
+</head>
+<body data-brand="samsung">
+<main>
+  <h1>Connect your phone for a battery checkup</h1>
+  <p class="line">One setting on the phone lets your computer read its battery records over the cable. It takes about two minutes, and you can turn it off again afterwards.</p>
+
+  <div class="brands" role="group" aria-label="Phone brand">
+    <span>My phone is a</span>
+    <button type="button" data-set="samsung" aria-pressed="true">Samsung</button>
+    <button type="button" data-set="pixel" aria-pressed="false">Pixel</button>
+    <button type="button" data-set="oneplus" aria-pressed="false">OnePlus</button>
+    <button type="button" data-set="other" aria-pressed="false">Other</button>
+  </div>
+
+  <ol class="steps">
+    <li class="step">
+      <div>
+        <div class="num">STEP 1</div>
+        <h2>Find Build number</h2>
+        <p data-b="samsung">Open <span class="path">Settings</span>, scroll to the bottom and tap <span class="path">About phone</span>, then <span class="path">Software information</span>.</p>
+        <p data-b="pixel oneplus">Open <span class="path">Settings</span>, scroll to the bottom and tap <span class="path">About phone</span>. Build number is near the end of that screen.</p>
+        <p data-b="other">Open <span class="path">Settings</span> and search for <span class="path">Build number</span>. Some phones show their own version name in its place, for example "MIUI version" or "OS version".</p>
+      </div>
+      <div class="ph" aria-hidden="true"><div class="dev">
+        <div class="ttl">Settings</div>
+        <div class="row dim">Battery</div>
+        <div class="row dim">Apps</div>
+        <div class="row dim">General management</div>
+        <div class="row dim">Software update</div>
+        <div class="row hit">About phone<span class="tap"></span></div>
+      </div></div>
+    </li>
+
+    <li class="step">
+      <div>
+        <div class="num">STEP 2</div>
+        <h2>Tap Build number seven times</h2>
+        <p>Keep tapping until the phone says <span class="path">"You are now a developer!"</span>. It may ask for your PIN first.</p>
+        <p class="muted">This only reveals a hidden menu called Developer options. It changes nothing else.</p>
+      </div>
+      <div class="ph" aria-hidden="true"><div class="dev">
+        <div class="ttl"><span data-b="samsung">Software information</span><span data-b="pixel oneplus other">About phone</span></div>
+        <div class="row dim"><span>Android version<small>17</small></span></div>
+        <div class="row dim"><span>Security update<small>1 October 2026</small></span></div>
+        <div class="row hit"><span>Build number<small>BP2A.250605</small></span><span class="x7">tap ×7</span></div>
+        <div class="row dim"><span>Kernel version<small>6.6.50</small></span></div>
+        <div class="toast">You are now a developer!</div>
+      </div></div>
+    </li>
+
+    <li class="step">
+      <div>
+        <div class="num">STEP 3</div>
+        <h2>Turn on USB debugging</h2>
+        <p data-b="samsung">Go back to <span class="path">Settings</span>. <span class="path">Developer options</span> is now at the very bottom. Open it and turn on <span class="path">USB debugging</span>, then tap OK.</p>
+        <p data-b="pixel">Go back to <span class="path">Settings</span>, tap <span class="path">System</span>, then <span class="path">Developer options</span>. Turn on <span class="path">USB debugging</span>, then tap OK.</p>
+        <p data-b="oneplus other">Open <span class="path">Settings</span> and search for <span class="path">Developer options</span>. On most phones it is under System. Turn on <span class="path">USB debugging</span>, then tap OK.</p>
+      </div>
+      <div class="ph" aria-hidden="true"><div class="dev">
+        <div class="ttl">Developer options</div>
+        <div class="row dim">Stay awake<span class="sw"></span></div>
+        <div class="row dim">OEM unlocking<span class="sw"></span></div>
+        <div class="row hit"><span>USB debugging<small>Debug mode when USB is connected</small></span><span class="sw on"></span></div>
+        <div class="row dim">Revoke USB debugging authorizations</div>
+        <div class="row dim">Wireless debugging<span class="sw"></span></div>
+      </div></div>
+    </li>
+
+    <li class="step">
+      <div>
+        <div class="num">STEP 4</div>
+        <h2>Plug in the cable and unlock the phone</h2>
+        <p>Connect the phone to the computer and unlock it. The prompt in the next step only shows on an unlocked phone.</p>
+        <p class="muted">Use the cable that came with the phone if you can. Many cables only charge and carry no data.</p>
+      </div>
+      <div class="ph" aria-hidden="true"><div class="dev">
+        <div class="lock"><div class="clock">9:41</div><p>Unlock the phone</p></div>
+        <div class="cable"></div>
+      </div></div>
+    </li>
+
+    <li class="step">
+      <div>
+        <div class="num">STEP 5</div>
+        <h2>Tap Allow</h2>
+        <p>The phone asks <span class="path">"Allow USB debugging?"</span>. Tick <span class="path">Always allow from this computer</span> and tap <span class="path">Allow</span>.</p>
+        <p>Then tell your assistant you are done.</p>
+      </div>
+      <div class="ph" aria-hidden="true"><div class="dev">
+        <div class="ttl">Settings</div>
+        <div class="row dim">Connections</div>
+        <div class="row dim">Battery</div>
+        <div class="shade"></div>
+        <div class="dlg">
+          <b>Allow USB debugging?</b>
+          The computer's RSA key fingerprint is: 4F:9A:…
+          <div class="ck"><i></i>Always allow from this computer</div>
+          <div class="btns"><span>Don't allow</span><span class="go">Allow</span></div>
+        </div>
+      </div></div>
+    </li>
+  </ol>
+
+  <section class="help">
+    <h2>No "Allow USB debugging?" prompt</h2>
+    <p class="line">Try these in order.</p>
+    <ol>
+      <li>Check that USB debugging is still on (step 3), and that the phone is unlocked.</li>
+      <li>Unplug the cable and plug it in again.</li>
+      <li>Pull down the notification shade, tap the USB notification and choose <span class="path">File transfer</span>.</li>
+      <li>Use a different cable. A charge-only cable will never show the prompt.</li>
+      <li>Use a different USB port, directly on the computer and not through a hub.</li>
+      <li>In Developer options, tap <span class="path">Revoke USB debugging authorizations</span>, then plug in again.</li>
+      <li>On Windows, install the phone maker's USB driver. Your assistant has the link.</li>
+    </ol>
+  </section>
+
+  <p class="after">When you are finished with the checkup you can turn USB debugging off again in Developer options.</p>
+</main>
+<script>
+const btns = document.querySelectorAll('.brands button');
+for (const b of btns) b.addEventListener('click', () => {
+  document.body.dataset.brand = b.dataset.set;
+  for (const x of btns) x.setAttribute('aria-pressed', String(x === b));
+});
+</script>
+</body>
+</html>

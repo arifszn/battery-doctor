@@ -14,7 +14,7 @@ The phone does record all of it. The records are only reachable over USB and are
 
 ## How it works
 
-1. **Connect the phone.** A USB cable and one setting on the phone. The assistant walks you through it.
+1. **Connect the phone.** A USB cable and one setting on the phone. The assistant walks you through it and opens a picture guide.
 2. **Run a checkup.** It takes under a minute and investigates how fast the battery drains, which apps use it, and what keeps the phone awake.
 3. **Read the report.** How long a charge lasts, how fast the phone drains when you are not using it, the causes, and a numbered list of fixes with what each one costs you.
 4. **Pick the fixes you want.** The assistant applies the ones it can and gives you steps for the rest. Nothing changes on your phone without your yes, and changes are logged so they can be undone.
@@ -128,6 +128,7 @@ If you try it on another phone, please [open a phone report](https://github.com/
 
 ```bash
 node battery-doctor/scripts/doctor.mjs status    # is the phone connected
+node battery-doctor/scripts/doctor.mjs guide     # open the picture guide for connecting the phone
 node battery-doctor/scripts/doctor.mjs check     # run a checkup and build the report
 node battery-doctor/scripts/doctor.mjs report    # open the report
 node battery-doctor/scripts/doctor.mjs fixes     # list the numbered fixes

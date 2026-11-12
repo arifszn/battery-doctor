@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { evaluate, quality, LIMITS } from './rules.mjs';
 import { readLog } from './fixes.mjs';
 
-const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets');
+export const ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'assets');
 const json = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
 export function loadCheckups(dir) {

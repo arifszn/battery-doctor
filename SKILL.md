@@ -30,8 +30,8 @@ Run `status`. Act on the line that starts with `adb:` and the line that starts w
 | Output | What to do |
 |---|---|
 | `adb: NOT INSTALLED` | Ask: "I need Google's Android connection tool (adb, about 15 MB, from Google's site, under the Android SDK terms). Download it?" On yes, run `get-adb`. |
-| `phone: NOT FOUND` | Read `battery-doctor/references/setup-phone.md` and walk the user through it, one step at a time. Run `status` again after each step they finish. |
-| `phone: ... is UNAUTHORIZED` | Ask the user to unlock the phone and tap **Allow** on the "Allow USB debugging?" prompt. |
+| `phone: NOT FOUND` | Run `guide`. It opens a picture guide in the user's browser that shows how to turn on USB debugging. Then read `battery-doctor/references/setup-phone.md` and walk the user through it, one step at a time. Run `status` again after each step they finish. |
+| `phone: ... is UNAUTHORIZED` | Ask the user to unlock the phone and tap **Allow** on the "Allow USB debugging?" prompt. If they see no prompt, run `guide` and point them to its last section. |
 | `phone: READY ...` | Go to Step 2. |
 
 ## Step 2: Check
