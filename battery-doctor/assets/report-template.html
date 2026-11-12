@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Battery report</title>
+<style>
+:root {
+  --bg: #eeecea; --field: #cdc3b6; --ink: #333231; --muted: #5e5a56; --soft: #e1ded9;
+  --accent: #3f6b3a; --accent-ink: #ffffff; --warn: #8a4b12;
+  --font: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --t1: clamp(30px, 2rem + .9vw, 46px); --t2: 18px; --t3: 15px;
+  --pad: clamp(22px, 5vw, 72px);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1b1a19; --field: #2b2926; --ink: #ecebe9; --muted: #b0aca6; --soft: #2a2927; --accent: #9fcb92; --accent-ink: #1b1a19; --warn: #e5b25c; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--t2)/1.6 var(--font); font-variant-numeric: tabular-nums; overflow-x: hidden; }
+h1, h2, p, ul, ol, dl, dd { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+small, .small { font-size: var(--t3); }
+.muted { color: var(--muted); }
+
+.split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.stage { background: var(--field); min-width: 0; }
+.stage-in { position: sticky; top: 0; height: 100svh; min-height: 560px; max-height: 960px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 16px; }
+.phone { height: min(calc(100svh - 110px), 760px); min-height: 480px; width: auto; max-width: 100%; display: block; overflow: visible; }
+.phone-name { font-size: var(--t3); text-align: center; }
+.read { padding: 0 var(--pad); min-width: 0; }
+.read-in { max-width: 600px; }
+.hero { padding: clamp(56px, 12svh, 120px) 0 0; }
+h1 { font-weight: 500; font-size: var(--t1); line-height: 1.12; letter-spacing: -.02em; max-width: 14em; }
+.line { margin-top: 28px; color: var(--muted); max-width: 30em; }
+.notice { margin-top: 20px; color: var(--warn); }
+.sec { margin-top: clamp(56px, 7vw, 96px); }
+h2 { font-weight: 500; font-size: var(--t1); line-height: 1.12; letter-spacing: -.02em; }
+.lead { margin-top: 16px; }
+
+/* calendar */
+.tl { margin-top: 28px; position: relative; }
+.tr { margin-bottom: 32px; }
+.tr svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tr text { font-family: var(--font); fill: var(--muted); font-size: 15px; }
+.tr text.v { fill: var(--ink); font-size: 18px; font-weight: 600; }
+.tr text.z { fill: var(--accent); }
+.cal + .cal { margin-top: 28px; }
+.cal-m { font-weight: 600; margin-bottom: 10px; }
+.cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-g .wd { font-size: 13px; color: var(--muted); text-align: center; padding-bottom: 2px; }
+.day { position: relative; width: 100%; min-height: 64px; padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; font-size: 13px; line-height: 1.2; color: var(--muted); box-shadow: inset 0 0 0 1px var(--soft); }
+.day.has { background: var(--soft); color: var(--ink); }
+.day.ok { background: var(--accent); color: var(--accent-ink); }
+.day.rough { background: none; box-shadow: none; outline: 1.5px dashed var(--muted); outline-offset: -2px; color: var(--ink); }
+.day.cur { box-shadow: inset 0 0 0 3px var(--ink); }
+.day .dv { font-size: 20px; font-weight: 600; }
+.day .dm { position: absolute; top: 5px; right: 5px; font-size: 11px; font-weight: 600; line-height: 16px; padding: 0 5px; border-radius: 999px; background: var(--ink); color: var(--bg); }
+.day.ok .dm { background: var(--accent-ink); color: var(--accent); }
+.tip { position: absolute; z-index: 3; pointer-events: none; background: var(--ink); color: var(--bg); font-size: var(--t3); line-height: 1.4; padding: 8px 10px; max-width: 260px; transform: translate(-50%, -100%); }
+.tip[hidden] { display: none; }
+.notes { margin-top: 18px; display: grid; gap: 4px; font-size: var(--t3); color: var(--muted); }
+.notes b { font-weight: 600; color: var(--ink); margin-right: 8px; }
+
+/* fixes */
+.fixlist { margin-top: 28px; display: grid; gap: 22px; }
+.fix { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 2px 12px; }
+.fix .id { font-weight: 600; }
+.fix .t { font-weight: 600; overflow-wrap: anywhere; }
+.fix .cost { grid-column: 2; font-size: var(--t3); color: var(--muted); }
+.state { display: inline-block; font-size: var(--t3); font-weight: 400; padding: 0 10px; margin-left: 10px; background: var(--soft); border-radius: 999px; white-space: nowrap; }
+.state.done { background: var(--accent); color: var(--accent-ink); }
+.fix details { grid-column: 2; font-size: var(--t3); }
+.fix summary, .more > summary { cursor: pointer; color: var(--muted); text-decoration: underline; text-underline-offset: 4px; }
+.fix ol { list-style: decimal; padding-left: 20px; margin-top: 6px; }
+.empty { margin-top: 24px; color: var(--muted); }
+/* the fix section is the one block that asks the reader to act: it takes the phone's dark screen */
+.focus { background: #131312; color: #f1efe9; padding: clamp(28px, 4vw, 48px); margin-left: calc(-1 * clamp(0px, 2vw, 24px)); margin-right: calc(-1 * clamp(0px, 2vw, 24px)); }
+.focus .lead, .focus .how { color: #bdb9b0; }
+.how { margin-top: 20px; font-size: var(--t3); }
+.also { margin-top: 24px; display: grid; gap: 12px; font-size: var(--t3); color: #bdb9b0; }
+.also b { display: block; font-weight: 600; color: #f1efe9; }
+.focus .fixlist { gap: 0; margin-top: 20px; }
+.focus .fix { padding: 20px 0; border-top: 1px solid rgba(255,255,255,.14); grid-template-columns: 44px minmax(0, 1fr); }
+.focus .fix .id { color: #b9e3a6; font-size: 22px; line-height: 1.3; }
+.focus .fix .t { font-size: 20px; line-height: 1.35; font-weight: 500; }
+.focus .fix .cost, .focus .fix summary, .focus .empty { color: #bdb9b0; }
+.focus .state { display: table; margin: 8px 0 4px; background: rgba(255,255,255,.12); color: #f1efe9; }
+.focus .state.done { background: #b9e3a6; color: #131312; }
+.focus :focus-visible { outline-color: #b9e3a6; }
+/* the page is already dark there, so the block lifts in the accent's hue instead */
+@media (prefers-color-scheme: dark) { .focus { background: #24301f; } }
+
+/* details */
+.more { margin-top: clamp(64px, 8vw, 110px); margin-bottom: 90px; }
+.showall { margin-top: 10px; color: var(--muted); font-size: var(--t3); text-decoration: underline; text-underline-offset: 4px; }
+.more > summary { font-size: var(--t2); }
+.more-in { margin-top: 40px; display: grid; gap: 64px; }
+.more h3 { font: 600 var(--t2)/1.3 var(--font); margin: 0 0 12px; }
+.more .sub { color: var(--muted); font-size: var(--t3); margin-bottom: 12px; }
+.rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; padding: 5px 0; }
+.rows .n { overflow-wrap: anywhere; }
+.rows .f { white-space: nowrap; }
+.rows .f small { color: var(--muted); margin-left: 8px; }
+.rows .gone { text-decoration: line-through; color: var(--muted); }
+.rows .sm { grid-column: 1 / -1; font-size: var(--t3); color: var(--muted); }
+.pick li { padding: 0; }
+.pick button, .pick .cur { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; width: 100%; padding: 8px 0; }
+.pick .cur { color: var(--accent); font-weight: 600; }
+.pick button:hover { text-decoration: underline; text-underline-offset: 4px; }
+.lv { position: relative; }
+.lv svg { display: block; width: 100%; height: auto; }
+.lv text { font: 400 14px var(--font); fill: var(--muted); }
+
+/* phone */
+.phone text { font-family: var(--font); fill: #f1efe9; }
+.phone .m { fill: #bdb9b0; }
+.phone .ser { font-weight: 500; letter-spacing: -.02em; }
+@media (prefers-reduced-motion: no-preference) {
+  .read-in > .hero > * { animation: rise .8s cubic-bezier(.2,.7,.2,1); }
+  @keyframes rise { from { transform: translateY(14px); } }
+}
+@media (max-width: 900px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .stage-in { position: static; height: auto; min-height: 0; max-height: none; padding: 28px 16px 32px; }
+  .phone { height: auto; min-height: 0; width: min(240px, 70vw); }
+  .hero { padding: 40px 0 0; }
+}
+@media (max-width: 560px) {
+  body { font-size: 17px; }
+  .day { min-height: 54px; padding: 5px; }
+  .day .dv { font-size: 16px; }
+  .pick button, .pick .cur { grid-template-columns: auto auto; justify-content: space-between; gap: 0 16px; }
+  .pick button > :first-child, .pick .cur > :first-child { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+<div class="split">
+  <aside class="stage"><div class="stage-in" id="stage"></div></aside>
+  <main class="read"><div class="read-in" id="read"></div></main>
+</div>
+<script>
+const D = "__REPORT_DATA__";
+const NS = 'http://www.w3.org/2000/svg';
+const h = (tag, attrs, ...kids) => {
+  const [t, ...cls] = tag.split('.');
+  const el = document.createElement(t || 'div');
+  if (cls.length) el.className = cls.join(' ');
+  for (const [k, v] of Object.entries(attrs || {})) { if (v == null || v === false) continue; if (k === 'on') for (const [e, f] of Object.entries(v)) el.addEventListener(e, f); else el.setAttribute(k, v); }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : String(k));
+  return el;
+};
+const s = (tag, attrs, parent, txt) => { const el = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs || {})) if (v != null) el.setAttribute(k, v); if (txt != null) el.textContent = txt; if (parent) parent.append(el); return el; };
+const n1 = v => (v == null ? null : (Math.round(v * 10) / 10).toFixed(1));
+const day = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const hm = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const dayTime = iso => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const maker = d => { const m = d?.manufacturer || ''; return [m.charAt(0).toUpperCase() + m.slice(1), d?.model].filter(Boolean).join(' '); };
+
+const cs = D.checkups, latest = cs[cs.length - 1], first = cs[0];
+const names = Object.assign({}, ...cs.map(c => c.findings?.appNames || {}));
+const app = pkg => names[pkg] || pkg;
+const tidy = t => String(t).replace(/[\w.]+\.[\w.]+/g, m => app(m));
+const live = D.changes.filter(c => !c.undoneAt);
+const fixKey = c => `${c.action}:${c.target}`;
+const doneBy = Object.fromEntries(live.filter(c => c.action !== 'force-stop').map(c => [fixKey(c), c]));   // a closed app can be running again
+const changeText = c => c.action === 'restrict-background' ? `${app(c.target)} stopped from running in the background`
+  : c.action === 'force-stop' ? `${app(c.target)} closed`
+  : ({ ble_scan_always_enabled: 'Background Bluetooth scanning turned off', wifi_scan_always_enabled: 'Background Wi-Fi scanning turned off', doze_always_on: 'Always-on display turned off' })[c.target] || `${c.target} set to ${c.value}`;
+// markers on the timeline: only changes the phone confirmed and that last (closing an app does not)
+const marked = live.filter(c => c.verified && c.action !== 'force-stop');
+// a full-charge estimate needs a real discharge; an idle figure needs enough screen-off time to compare
+const hpc = c => (c.window?.dischargedPct ?? 0) >= D.limits.minDischargedPct ? c.hoursPerCharge : null;
+const rough = c => c.quality?.ok === false || (c.idle?.hours ?? 0) < D.limits.minIdleHours;
+let sel = cs.length - 1;
+const ok = D.limits.idleOk;
+
+function verdict() {
+  const hl = latest.findings?.headline;
+  if (hl) { const m = hl.match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : hl; }
+  const i = latest.idle;
+  if (!i) return 'This checkup could not measure idle drain.';
+  const prev = cs.slice(0, -1).reverse().find(c => c.idle);
+  if (prev && (rough(latest) || rough(prev))) return `Idle drain is ${n1(i.pctPerHour)}% an hour.`;   // no direction claimed from a rough figure
+  if (prev && n1(prev.idle.pctPerHour) === n1(i.pctPerHour)) return `Idle drain is steady at ${n1(i.pctPerHour)}% an hour.`;
+  if (prev) return `Idle drain is ${i.pctPerHour < prev.idle.pctPerHour ? 'down' : 'up'} to ${n1(i.pctPerHour)}% an hour, from ${n1(prev.idle.pctPerHour)}%.`;
+  return `Idle drain is ${n1(i.pctPerHour)}% an hour; healthy is under ${ok}%.`;
+}
+const clockOf = c => { const st = c.window?.startedAt ? new Date(c.window.startedAt) : null; return t => { if (!st || isNaN(st)) return `${Math.round(t)} h`; const d = new Date(+st + t * 3600e3); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }; };
+
+/* ---------- the phone ---------- */
+function phone() {
+  const c = cs[sel], b = c.battery || {}, lv = c.levels || [], idle = c.idle;
+  const stage = document.getElementById('stage');
+  const svg = s('svg', { class: 'phone', viewBox: '-6 0 332 660', role: 'img', 'aria-label': `${maker(latest.device)} showing the checkup of ${dayTime(c.takenAt)}: battery at ${b.levelPct ?? 'unknown'}%, idle drain ${idle ? n1(idle.pctPerHour) + '% per hour' : 'not measured'}.` });
+  const defs = s('defs', {}, svg);
+  const cp = s('clipPath', { id: 'scr' }, defs); s('rect', { x: 10, y: 10, width: 300, height: 640, rx: 38 }, cp);
+  s('rect', { x: -3, y: 150, width: 6, height: 56, rx: 3, fill: '#0b0b0a' }, svg);
+  s('rect', { x: 317, y: 170, width: 6, height: 70, rx: 3, fill: '#0b0b0a' }, svg);
+  s('rect', { x: 0, y: 0, width: 320, height: 660, rx: 48, fill: '#232220' }, svg);
+  s('rect', { x: 4, y: 4, width: 312, height: 652, rx: 44, fill: '#0e0e0d' }, svg);
+  const g = s('g', { 'clip-path': 'url(#scr)' }, svg);
+  s('rect', { x: 10, y: 10, width: 300, height: 640, fill: '#131312' }, g);
+  s('text', { x: 34, y: 52, 'font-size': 14, 'font-weight': 600 }, g, hm(c.takenAt));
+  const lvl = b.levelPct != null ? Math.max(0, Math.min(100, b.levelPct)) : 0;
+  s('rect', { x: 262, y: 41, width: 26, height: 13, rx: 3.5, fill: 'none', stroke: '#f1efe9', 'stroke-width': 1.5 }, g);
+  s('rect', { x: 289.5, y: 45, width: 2.5, height: 5, rx: 1, fill: '#f1efe9' }, g);
+  if (b.levelPct != null) s('rect', { x: 264.5, y: 43.5, width: 21 * lvl / 100, height: 8, rx: 2, fill: '#f1efe9' }, g);
+  s('text', { x: 34, y: 120, 'font-size': 14, class: 'm' }, g, 'Screen off, drain per hour');
+  const big = s('text', { x: 30, y: 206, 'font-size': 92, class: 'ser' }, g, idle ? n1(idle.pctPerHour) : '\u2013');
+  s('tspan', { dx: 8, 'font-size': 24, class: 'm' }, big, '%');
+  s('text', { x: 34, y: 234, 'font-size': 14, class: 'm' }, g, `Healthy is under ${ok}%`);
+  if (lv.length > 1) {
+    const end = Math.max(lv[lv.length - 1][0], 1), X = t => 30 + t / end * 260, Y = v => 480 - v / 100 * 150;
+    s('text', { x: 30, y: 316, 'font-size': 14, class: 'm' }, g, `Battery level, down to ${lv[lv.length - 1][1]}%`);
+    const clip = s('clipPath', { id: 'cc' }, defs); s('rect', { x: 30, y: 330, width: 260, height: 150 }, clip);
+    const cg = s('g', { 'clip-path': 'url(#cc)' }, g);
+    for (const sp of c.screenSpans || []) s('rect', { x: X(sp[0]), y: 330, width: Math.max(1.5, X(sp[1]) - X(sp[0])), height: 150, fill: 'rgba(255,255,255,.12)' }, cg);
+    s('polyline', { points: lv.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' '), fill: 'none', stroke: '#b9e3a6', 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, cg);
+    const clock = clockOf(c);
+    s('text', { x: 30, y: 500, 'font-size': 13, class: 'm' }, g, clock(0));
+    s('text', { x: 290, y: 500, 'font-size': 13, class: 'm', 'text-anchor': 'end' }, g, clock(end));
+  }
+  s('text', { x: 30, y: 588, 'font-size': 14, class: 'm' }, g, 'A full charge lasts about');
+  s('text', { x: 290, y: 588, 'font-size': 22, 'text-anchor': 'end', class: 'ser' }, g, hpc(c) != null ? `${n1(hpc(c))} h` : '–');
+  s('rect', { x: 125, y: 638, width: 70, height: 4, rx: 2, fill: 'rgba(255,255,255,.4)' }, g);
+  s('circle', { cx: 160, cy: 30, r: 7, fill: '#000' }, svg);
+  stage.replaceChildren(svg, h('p.phone-name', {}, [maker(latest.device), latest.device?.android ? `Android ${latest.device.android}` : ''].filter(Boolean).join(', ')));
+}
+
+/* ---------- timeline ---------- */
+function tooltip(host) {
+  const tip = h('div.tip', { hidden: true }); host.append(tip);
+  return { show(x, y, lines) { tip.replaceChildren(...lines.flatMap((l, i) => i ? [h('br'), l] : [l])); tip.hidden = false; const w = host.clientWidth, half = tip.offsetWidth / 2; tip.style.left = Math.max(half, Math.min(w - half, x)) + 'px'; tip.style.top = (y - 10) + 'px'; }, hide() { tip.hidden = true; } };
+}
+let allMonths = false;
+// the curve: idle drain at every checkup, against the healthy band
+function trendCurve(host, pts) {
+  const W = host.clientWidth || 600, H = W < 520 ? 210 : 240, m = { l: 12, r: 12, t: 44, b: 34 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const ts = pts.map(p => +new Date(p.c.takenAt)), t0 = ts[0], t1 = ts[ts.length - 1], padT = (t1 - t0) * 0.06;
+  const x = t => m.l + (t - (t0 - padT)) / (t1 - t0 + 2 * padT) * pw;
+  const top = Math.max(...pts.map(p => p.c.idle.pctPerHour), ok) * 1.15, y = v => m.t + ph - v / top * ph;
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Idle drain at each checkup: ${pts.map(p => `${day(p.c.takenAt)} ${n1(p.c.idle.pctPerHour)}% per hour`).join(', ')}. Healthy is under ${ok}%.` }, host);
+  s('rect', { x: m.l, y: y(ok), width: pw, height: y(0) - y(ok), fill: 'var(--soft)' }, svg);
+  s('line', { x1: m.l, x2: m.l + pw, y1: y(ok), y2: y(ok), stroke: 'var(--accent)', 'stroke-width': 1, opacity: .7 }, svg);
+  s('text', { x: m.l + 10, y: y(0) - 9, class: 'z' }, svg, `Healthy: under ${ok}% an hour`);
+  s('polyline', { points: pts.map((p, k) => `${x(ts[k])},${y(p.c.idle.pctPerHour)}`).join(' '), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+  const few = pts.length <= 6, vs = pts.map(p => p.c.idle.pctPerHour), lo = vs.indexOf(Math.min(...vs)), hi = vs.indexOf(Math.max(...vs));
+  pts.forEach((p, k) => {
+    const cx = x(ts[k]), cy = y(vs[k]), edge = cx < 48 ? 'start' : cx > W - 48 ? 'end' : 'middle', ends = k === 0 || k === pts.length - 1;
+    if (rough(p.c)) s('circle', { cx, cy, r: few ? 7 : 4.5, fill: 'var(--bg)', stroke: 'var(--accent)', 'stroke-width': few ? 3 : 2 }, svg);
+    else s('circle', { cx, cy, r: few ? 8 : 5, fill: 'var(--accent)', stroke: 'var(--bg)', 'stroke-width': few ? 3 : 2 }, svg);
+    if (few || ends || k === lo || k === hi) s('text', { x: edge === 'start' ? Math.max(cx - 6, 2) : edge === 'end' ? Math.min(cx + 6, W - 2) : cx, y: cy - 18, class: 'v', 'text-anchor': edge }, svg, n1(vs[k]));
+    if (ends) s('text', { x: cx, y: H - 8, 'text-anchor': edge }, svg, day(p.c.takenAt));
+  });
+}
+function timeline(host) {
+  host.replaceChildren();
+  const pts = cs.map((c, i) => ({ c, i })).filter(p => p.c.idle);
+  if (!pts.length) { host.append(h('p.empty', {}, 'No checkup could measure idle drain yet.')); return; }
+  const key = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const byDay = {}; for (const p of pts) byDay[key(new Date(p.c.takenAt))] = p;   // the last checkup of a day stands for it
+  const sorted = marked.slice().sort((a, b) => new Date(a.at) - new Date(b.at)), chByDay = {};
+  sorted.forEach((c, k) => (chByDay[key(new Date(c.at))] ||= []).push([c, k + 1]));
+  const times = [...pts.map(p => +new Date(p.c.takenAt)), ...sorted.map(c => +new Date(c.at))];
+  const a = new Date(Math.min(...times)), b = new Date(Math.max(...times)), months = [];
+  for (let y = b.getFullYear(), m = b.getMonth(); y > a.getFullYear() || (y === a.getFullYear() && m >= a.getMonth()); m ? m-- : (y--, m = 11)) months.push([y, m]);
+  if (pts.length > 1) { const tr = h('div.tr'); host.append(tr); trendCurve(tr, pts); }
+  const tip = tooltip(host);
+  const hover = (el, lines) => {
+    const show = () => { const r = el.getBoundingClientRect(), o = host.getBoundingClientRect(); tip.show(r.left - o.left + r.width / 2, r.top - o.top, lines); };
+    for (const e of ['mouseenter', 'focus']) el.addEventListener(e, show);
+    for (const e of ['mouseleave', 'blur']) el.addEventListener(e, () => tip.hide());
+  };
+  for (const [y, m] of months.slice(0, allMonths ? months.length : 2)) {
+    // the oldest month starts at the week of the first checkup or change, not at the 1st
+    const from = y === a.getFullYear() && m === a.getMonth() ? Math.max(1, a.getDate() - (a.getDay() + 6) % 7) : 1;
+    const lead = (new Date(y, m, from).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate(), cells = [];
+    for (const d of 'MTWTFSS') cells.push(h('span.wd', { 'aria-hidden': 'true' }, d));
+    for (let k = 0; k < lead; k++) cells.push(h('span'));
+    for (let d = from; d <= days; d++) {
+      const date = new Date(y, m, d), p = byDay[key(date)], ch = chByDay[key(date)] || [];
+      const mark = ch.length ? h('span.dm', {}, ch.length > 1 ? `${ch[0][1]}–${ch[ch.length - 1][1]}` : String(ch[0][1])) : null;
+      const changes = ch.map(q => changeText(q[0]));
+      if (!p) { const el = h('div.day', ch.length ? { tabindex: 0, 'aria-label': `${day(date)}: ${changes.join('; ')}` } : { 'aria-hidden': 'true' }, h('span', {}, d), mark); if (ch.length) hover(el, [day(date), ...changes]); cells.push(el); continue; }
+      const v = p.c.idle.pctPerHour, cur = p.i === sel;
+      const el = h('button.day.has' + (rough(p.c) ? '.rough' : v <= ok ? '.ok' : '') + (cur ? '.cur' : ''), { type: 'button', 'aria-pressed': String(cur),
+        'aria-label': `${dayTime(p.c.takenAt)}: ${n1(v)}% per hour while idle${changes.length ? '. ' + changes.join('; ') : ''}`,
+        on: { click: () => { sel = p.i; phone(); renderDetails(true); timeline(host); } } }, h('span', {}, d), h('span.dv', {}, n1(v)), mark);
+      hover(el, [dayTime(p.c.takenAt), `${n1(v)}% per hour idle`, p.c.idle.hours != null ? `Measured over ${n1(p.c.idle.hours)} h with the screen off` : null, ...changes].filter(Boolean));
+      cells.push(el);
+    }
+    host.append(h('div.cal', {}, h('p.cal-m', {}, new Date(y, m, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })), h('div.cal-g', {}, cells)));
+  }
+  if (months.length > 2) host.append(h('button.showall', { type: 'button', on: { click: () => { allMonths = !allMonths; timeline(host); } } }, allMonths ? 'Show the latest 2 months' : `Show all ${months.length} months`));
+  const notes = [pts.some(p => !rough(p.c) && p.c.idle.pctPerHour <= ok) ? `Filled days are within the healthy limit of ${ok}% an hour.` : null,
+    pts.some(p => rough(p.c)) ? `Dashed days and hollow points were measured over less than ${D.limits.minIdleHours} h with the screen off, so they are rough.` : null].filter(Boolean);
+  const shown = sorted.map((c, k) => [c, k]).slice(-5);
+  if (sorted.length || notes.length) host.append(h('ul.notes', {}, notes.map(t => h('li', {}, t)),
+    sorted.length > shown.length ? h('li', {}, `${sorted.length - shown.length} earlier changes are listed under Details.`) : null,
+    shown.map(([c, k]) => h('li', {}, h('b', {}, `${k + 1}.`), `${day(c.at)}: ${changeText(c)}`))));
+}
+
+/* ---------- fixes ---------- */
+function fixItem(x, n, steps) {
+  const done = doneBy[x.id];
+  return h('li.fix', {}, h('span.id', {}, `F${n}`),
+    h('span.t', {}, x.title, h('span.state' + (done ? '.done' : ''), {}, done ? `Done ${day(done.at)}` : x.kind === 'auto' ? 'Can be applied for you' : 'Do it on the phone')),
+    x.tradeoff ? h('span.cost', {}, `Costs: ${x.tradeoff}`) : null,
+    steps?.length ? h('details', {}, h('summary', {}, 'Show the steps'), h('ol', {}, steps.map(t => h('li', {}, t)))) : null);
+}
+function fixes() {
+  const f = latest.findings || {}, rank = { high: 0, medium: 1, info: 2 };
+  const flags = latest.flags.slice().sort((a, b) => rank[a.severity] - rank[b.severity]);
+  const top = flags.find(x => x.severity !== 'info') || flags[0];
+  const items = [], seen = new Set(); let n = 0, canApply = false;
+  for (const fl of latest.flags) for (const x of fl.fixes) {
+    if (seen.has(x.id)) continue; seen.add(x.id);
+    if (x.kind === 'auto' && !doneBy[x.id]) canApply = true;
+    items.push(fixItem({ ...x, title: tidy(x.title) }, ++n));
+  }
+  const also = flags.filter(x => x !== top && !x.fixes.length);
+  const alsoList = also.length ? h('ul.also', { 'aria-label': 'Also noticed' }, also.map(x => h('li', {}, h('b', {}, tidy(x.title)), tidy(f.explanations?.[x.id] || x.detail)))) : null;
+  const worn = also.some(x => x.severity === 'high');
+  for (const x of f.manual || []) items.push(fixItem({ id: 'manual:' + x.title, kind: 'manual', title: x.title, tradeoff: x.tradeoff }, ++n, x.steps));
+  return [
+    top ? h('p.lead', {}, tidy(f.explanations?.[top.id] || top.detail)) : null,
+    worn ? alsoList : null,
+    items.length ? h('ul.fixlist', {}, items) : h('p.empty', {}, latest.quality?.ok === false ? 'Too little data in this checkup to suggest fixes.' : 'Nothing to fix from this checkup.'),
+    canApply ? h('p.how', {}, 'To apply a fix, tell your assistant its number, for example "apply F1". Nothing changes until you do, and a change can be undone.') : null,
+    worn ? null : alsoList,
+  ];
+}
+
+/* ---------- details ---------- */
+function rows(list, none) {
+  if (!list.length) return h('p.sub', {}, none);
+  return h('ul.rows', {}, list.map(r => h('li', {}, h('span.n', { title: r.title }, r.label), h('span.f', {}, r.figure, r.note ? h('small', {}, r.note) : null))));
+}
+function curve(host, c) {
+  host.replaceChildren();
+  const lv = c.levels || [];
+  if (lv.length < 2) { host.append(h('p.sub', {}, 'This checkup has no battery level history.')); return; }
+  const W = host.clientWidth || 560, H = W < 520 ? 220 : 260, m = { l: 40, r: 8, t: 10, b: 30 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const end = Math.max(lv[lv.length - 1][0], 1), x = t => m.l + t / end * pw, y = v => m.t + ph - v / 100 * ph;
+  const clock = clockOf(c), tip = tooltip(host);
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Battery level from ${lv[0][1]}% to ${lv[lv.length - 1][1]}% over ${n1(end)} hours.` }, host);
+  for (const v of [0, 50, 100]) s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end' }, svg, `${v}%`);
+  for (const sp of c.screenSpans || []) s('rect', { x: x(sp[0]), y: m.t, width: Math.max(1.5, x(sp[1]) - x(sp[0])), height: ph, fill: 'var(--ink)', opacity: .12 }, svg);
+  const st = [1, 2, 3, 4, 6, 12, 24].find(k => end / k <= (W < 520 ? 4 : 6)) || 24;
+  for (let t = 0; t <= end + .001; t += st) s('text', { x: x(t), y: H - 6, 'text-anchor': t === 0 ? 'start' : 'middle' }, svg, clock(t));
+  s('polyline', { points: lv.map(p => `${x(p[0])},${y(p[1])}`).join(' '), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
+  const cross = s('line', { y1: m.t, y2: m.t + ph, stroke: 'var(--ink)', 'stroke-width': 1, visibility: 'hidden' }, svg), dot = s('circle', { r: 5, fill: 'var(--accent)', visibility: 'hidden' }, svg);
+  const rect = s('rect', { x: m.l, y: m.t, width: pw, height: ph, fill: 'transparent' }, svg);
+  rect.addEventListener('pointermove', e => {
+    const r = svg.getBoundingClientRect(), t = Math.max(0, Math.min(end, ((e.clientX - r.left) * (W / r.width) - m.l) / pw * end));
+    let p = lv[0]; for (const q of lv) if (Math.abs(q[0] - t) < Math.abs(p[0] - t)) p = q;
+    const on = (c.screenSpans || []).some(sp => p[0] >= sp[0] && p[0] <= sp[1]);
+    cross.setAttribute('x1', x(p[0])); cross.setAttribute('x2', x(p[0])); dot.setAttribute('cx', x(p[0])); dot.setAttribute('cy', y(p[1]));
+    for (const el of [cross, dot]) el.setAttribute('visibility', 'visible');
+    tip.show(x(p[0]) * r.width / W, y(p[1]) * r.height / H - 8, [`${clock(p[0])}: ${p[1]}%`, on ? 'Screen on' : 'Screen off']);
+  });
+  rect.addEventListener('pointerleave', () => { for (const el of [cross, dot]) el.setAttribute('visibility', 'hidden'); tip.hide(); });
+}
+let lvHost = null, showAll = false;
+function detailBody() {
+  const c = cs[sel], w = c.window || {}, off = w.screenOffHours || 0, b = c.battery || {}, d = c.device || {};
+  const apps = (c.screenApps || []).slice(0, 6).map(a => ({ label: app(a.app), title: a.app, figure: `${a.mah.toLocaleString('en')} mAh`, note: `${a.minutes} min` }));
+  const est = !apps.length ? (c.estimatedApps || []).filter(a => a.app !== 'android' && a.app !== 'kernel').slice(0, 6).map(a => ({ label: app(a.app), title: a.app, figure: `${a.mah.toLocaleString('en')} mAh` })) : [];
+  const wake = (c.wakeups || []).filter(g => g.source !== 'Charger or USB').slice(0, 6).map(g => ({ label: g.source, figure: g.count.toLocaleString('en'), note: 'times' }));
+  const bg = [
+    ...(c.usage?.foregroundServices || []).map(f => ({ label: app(f.app), title: f.app, v: f.hours, figure: `${n1(f.hours)} h`, note: 'running in the background' })),
+    ...(c.btScans || []).map(x => ({ label: app(x.app), title: x.app, v: x.hours, figure: `${n1(x.hours)} h`, note: 'scanning Bluetooth' })),
+  ].sort((a, b) => b.v - a.v).slice(0, 6);
+  lvHost = h('div.lv');
+  const cell = (v, u) => v == null ? '–' : `${v}${u || ''}`;
+  const sec = (t, ...k) => h('section', {}, h('h3', {}, t), ...k);
+  const body = h('div.more-in', {},
+    sec(`All checkups (${cs.length})`, h('ul.rows.pick', {}, cs.map((x, i) => [x, i]).reverse().filter(([, i], k) => showAll || k < 5 || i === sel).map(([x, i]) => h('li', {}, h(i === sel ? 'div.cur' : 'button', i === sel ? { 'aria-current': 'true' } : { type: 'button', on: { click: () => { sel = i; phone(); renderDetails(true); if (window.__tl.isConnected) timeline(window.__tl); } } },
+      h('span', {}, dayTime(x.takenAt)), h('span', {}, `${cell(n1(x.idle?.pctPerHour), '%')} idle`), h('span', {}, `${cell(n1(hpc(x)), ' h')} per charge`))))),
+      cs.length > 5 ? h('button.showall', { type: 'button', on: { click: () => { showAll = !showAll; renderDetails(true); } } }, showAll ? 'Show the latest 5' : `Show all ${cs.length} checkups`) : null),
+    sec(`Checkup on ${dayTime(c.takenAt)}`, h('p.sub', {}, w.hoursOnBattery != null ? `${n1(w.hoursOnBattery)} h on battery, ${w.dischargedPct ?? 0}% used. Shaded: screen on.${b.levelPct != null && c.levels?.length && b.levelPct > c.levels[c.levels.length - 1][1] + 3 ? ` The curve stops where the phone was put on charge; it was at ${b.levelPct}% at the checkup.` : ''}` : ''), lvHost),
+    sec(apps.length ? 'Battery used while each app was on screen' : 'Battery used by app, as estimated by Android', rows(apps.length ? apps : est, 'This phone did not report battery use by app.')),
+    sec('What woke the phone', rows(wake, 'This phone did not report what woke it.')),
+    sec('Busy in the background', rows(bg, 'No app ran in the background or scanned Bluetooth for long.')),
+    sec('Changes made', D.changes.length ? h('ul.rows', {}, [...D.changes].reverse().map(x => h('li', {}, h('span.n' + (x.undoneAt ? '.gone' : ''), {}, changeText(x)), h('span.f', {}, day(x.at)),
+      x.undoneAt ? h('span.sm', {}, `Undone ${day(x.undoneAt)}`) : !x.verified ? h('span.sm', {}, 'The phone did not confirm this change.') : null))) : h('p.sub', {}, 'No changes have been made to this phone.')),
+    sec('The battery itself', h('ul.rows', {}, [
+      ['Holds', b.healthPct != null ? `${b.healthPct}% of original` : null], ['Capacity when new', b.designMah ? `${b.designMah.toLocaleString('en')} mAh` : null],
+      ['Capacity now', b.measuredFullMah ? `${b.measuredFullMah.toLocaleString('en')} mAh` : null], ['Temperature', b.temperatureC != null ? `${n1(b.temperatureC)} °C` : null],
+      ['Phone', maker(d) || null], ['Android', d.android]].filter(([, v]) => v != null).map(([k, v]) => h('li', {}, h('span.n', {}, k), h('span.f', {}, v))))));
+  return body;
+}
+function renderDetails(keepOpen) {
+  const host = document.getElementById('more');
+  const wasOpen = keepOpen || host.open;
+  host.replaceChildren(h('summary', {}, 'Details'), detailBody());
+  host.open = wasOpen;
+  if (host.open) curve(lvHost, cs[sel]);
+}
+
+function readColumn() {
+  const i = latest.idle, a = latest.active, b = latest.battery || {};
+  const bits = [hpc(latest) != null ? `A full charge lasts about ${n1(hpc(latest))} h` : null, a ? `drain in use is ${n1(a.pctPerHour)}% per hour` : null, b.healthPct != null ? `the battery holds ${b.healthPct}% of its capacity` : null].filter(Boolean);
+  const r = i ? i.pctPerHour / ok : null;
+  const versus = r == null ? null : r <= 1 ? `Screen-off drain is within the healthy limit of ${ok}% an hour.`
+    : `Screen-off drain is ${r >= 1.75 && r < 2.25 ? 'about twice' : r < 1.25 ? 'just over' : `about ${n1(r)} times`} the healthy limit of ${ok}% an hour.`;
+  const line = [versus, bits.length ? bits.join(', ').replace(/^./, m => m.toUpperCase()) + '.' : null].filter(Boolean).join(' ') || null;
+  const trend = cs.some(c => c.idle);
+  const trendBox = h('div.tl');
+  const more = h('details.more', { id: 'more', open: '' });
+  document.getElementById('read').replaceChildren(...[
+    h('div.hero', {}, h('h1', {}, verdict()), line ? h('p.line', {}, line) : null,
+      latest.quality?.ok === false ? h('p.notice', { role: 'note' }, (latest.quality.reasons || []).join(' ')) : null),
+    h('section.sec.focus', { 'aria-labelledby': 'h-fx' }, h('h2', { id: 'h-fx' }, 'What to fix next'), ...fixes()),
+    trend ? h('section.sec', { 'aria-labelledby': 'h-tl' }, h('h2', { id: 'h-tl' }, 'Idle drain, day by day'), trendBox) : null,
+    more].filter(Boolean));
+  window.__tl = trendBox;
+  if (trend) timeline(trendBox);
+  more.addEventListener('toggle', () => { if (more.open && lvHost) curve(lvHost, cs[sel]); });
+  renderDetails(true);
+}
+
+readColumn(); phone();
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (window.__tl.isConnected) timeline(window.__tl); if (lvHost && document.getElementById('more').open) curve(lvHost, cs[sel]); }, 150); });
+</script>
+</body>
+</html>

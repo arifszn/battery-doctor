@@ -1,0 +1,7 @@
+{
+  "name": "battery-doctor-dev",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only: tests for the battery-doctor skill. The skill itself has no build step and no dependencies.",
+  "scripts": { "test": "node --test tests/doctor.test.mjs" }
+}
