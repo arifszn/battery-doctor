@@ -14,7 +14,7 @@ Every field is optional.
     "com.sec.android.app.launcher": "Home screen"
   },
   "explanations": {
-    "idle-drain": "Your phone keeps working when you are not using it. The two apps below are the main reason."
+    "idle-drain": "Two apps ran in the background for most of the day: Trail Tracker for 15 hours and Maps for 9."
   },
   "manual": [
     {
@@ -40,7 +40,7 @@ Every field is optional.
 - Write for someone who has never opened a settings menu. Short sentences, no jargon, no package names.
 - Use only numbers that appear in the `check` output.
 - `headline` states the result, not the method. Good: "A full charge now lasts about a day." Bad: "I analysed your batterystats dump."
-- An `explanation` says why it matters to the user and what causes it. Do not repeat the title.
+- An `explanation` names the cause, with its numbers. Start with the cause. Do not repeat the title or restate the problem in general words ("your phone keeps working while unused").
 - A `tradeoff` says what the user loses. If nothing, leave it out.
 - Do not use emoji.
 
