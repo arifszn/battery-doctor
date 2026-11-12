@@ -1,6 +1,6 @@
 ---
 name: battery-doctor
-description: Find what drains an Android phone's battery and make a charge last longer. Connects to the phone over USB, reads its own battery statistics, shows an HTML report with the trend across checkups, and applies reversible fixes only after the user confirms each one. Use when the user says their phone battery drains fast, dies early, drains overnight or while idle, gets hot, or asks for a battery checkup, a battery health check, what is using their battery, or whether a change improved it. Android only; works on macOS, Windows and Linux.
+description: Find what drains an Android phone's battery, fix it, and show whether it got better. Connects to the phone over USB and investigates its own battery records: what woke it, which apps ran in the background or kept a sensor, Bluetooth scan or location request going, and how fast it drains with the screen off. Applies reversible fixes only after the user confirms each one, and compares each checkup with the last in an HTML report. Use when the user says their phone battery drains fast, dies early, drains overnight or while idle, gets hot, or asks for a battery checkup, a battery health check, what is using their battery, why it drains, or whether a change improved it. Android only; works on macOS, Windows and Linux.
 ---
 
 # battery-doctor

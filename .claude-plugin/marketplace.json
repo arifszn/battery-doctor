@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "battery-doctor",
-  "description": "Find what drains an Android phone's battery, fix it with your confirmation, and see the improvement across checkups.",
+  "description": "Find what drains an Android phone's battery, fix it with your confirmation, and see whether it got better.",
   "owner": {
     "name": "arifszn",
     "url": "https://github.com/arifszn"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "battery-doctor",
-      "description": "Find what drains an Android phone's battery and make a charge last longer. Reads the phone's own battery statistics over USB, shows an HTML report with the trend across checkups, and applies reversible fixes only after you confirm each one.",
+      "description": "Finds what drains an Android phone's battery, fixes it, and shows whether it got better. Investigates the phone's own battery records over USB: what woke it, which apps ran in the background or kept a sensor, Bluetooth scan or location request going, and how fast it drains with the screen off. Applies reversible fixes only after you confirm each one, and compares each checkup with the last in an HTML report.",
       "source": "./battery-doctor",
       "category": "productivity",
       "tags": ["android", "battery", "adb", "phone", "diagnostics", "report"]
