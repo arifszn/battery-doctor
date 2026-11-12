@@ -4,6 +4,7 @@
 //   node doctor.mjs get-adb           download Google's adb (only after the user agrees)
 //   node doctor.mjs check             take a checkup, print the summary, build the report
 //   node doctor.mjs report            rebuild the HTML report from saved checkups
+//   node doctor.mjs fixes             list the numbered fixes (F1, F2, ...) of the latest checkup
 //   node doctor.mjs apply <action> <target> --yes     make one confirmed change
 //   node doctor.mjs undo <id|all>     reverse a change
 //   node doctor.mjs changes           list changes made so far
@@ -12,7 +13,7 @@ import path from 'node:path';
 import { HOME, DOWNLOAD_URL, findAdb, downloadAdb, devices, shell } from './lib/adb.mjs';
 import { collect } from './lib/collect.mjs';
 import { summarize } from './lib/parse.mjs';
-import { evaluate, quality } from './lib/rules.mjs';
+import { evaluate, quality, fixList } from './lib/rules.mjs';
 import { apply, undo, readLog, ACTIONS, SETTINGS } from './lib/fixes.mjs';
 import { buildReport, loadCheckups, openInBrowser } from './lib/report.mjs';
 
@@ -75,11 +76,22 @@ function printSummary(s, flagsList, q, prev) {
   list('What wakes the phone', s.wakeups.slice(0, 6), g => `${g.source}: ${g.count} times`);
   say(`\n## Problems found (${flagsList.length})`);
   if (!flagsList.length) say('- None above the thresholds.');
-  let n = 0;   // same numbering as the report
+  const num = new Map(fixList(flagsList).map(x => [x.id, x.n]));   // same numbering as the report
   for (const f of flagsList) {
     say(`- [${f.severity}] ${f.id}: ${f.title}. ${f.detail}`);
-    for (const x of f.fixes) say(`    fix F${++n} (${x.kind}) ${x.id}: ${x.title}. Cost: ${x.tradeoff}`);
+    for (const x of f.fixes) say(`    fix F${num.get(x.id)} (${x.kind}) ${x.id}: ${x.title}. Cost: ${x.tradeoff}`);
   }
+}
+
+// The phone's data folder: --dir, the only one saved, or the connected phone's.
+function pickDir() {
+  const given = opt('dir');
+  if (given) return given;
+  const bin = findAdb();
+  const dirs = fs.existsSync(HOME) ? fs.readdirSync(HOME).map(n => path.join(HOME, n)).filter(p => fs.existsSync(path.join(p, 'checkups'))) : [];
+  if (dirs.length === 1) return dirs[0];
+  if (bin && devices(bin).some(d => d.state === 'device')) return deviceDir(bin, needDevice(bin));
+  fail(dirs.length ? `Several phones have checkups. Pass --dir=<one of: ${dirs.join(', ')}>.` : 'No checkups yet. Run "node doctor.mjs check" first.');
 }
 
 const commands = {
@@ -123,17 +135,22 @@ const commands = {
   },
 
   report() {
-    const bin = findAdb();
-    let dir = opt('dir');
-    if (!dir) {
-      const dirs = fs.existsSync(HOME) ? fs.readdirSync(HOME).map(n => path.join(HOME, n)).filter(p => fs.existsSync(path.join(p, 'checkups'))) : [];
-      if (dirs.length === 1) dir = dirs[0];
-      else if (bin && devices(bin).some(d => d.state === 'device')) dir = deviceDir(bin, needDevice(bin));
-      else fail(dirs.length ? `Several phones have checkups. Pass --dir=<one of: ${dirs.join(', ')}>.` : 'No checkups yet. Run "node doctor.mjs check" first.');
-    }
-    const out = buildReport(dir);
+    const out = buildReport(pickDir());
     say(`report: ${out}`);
     if (!flags.has('--no-open')) openInBrowser(out);
+  },
+
+  fixes() {
+    const dir = pickDir(), last = loadCheckups(dir).pop();
+    if (!last) fail('No checkups yet. Run "node doctor.mjs check" first.');
+    const list = fixList(evaluate(last.summary), last.findings);
+    const done = new Set(readLog(dir).filter(e => e.verified && !e.undoneAt && e.action !== 'force-stop').map(e => `${e.action}:${e.target}`));
+    say(`# Fixes from the checkup of ${last.summary.takenAt.slice(0, 16).replace('T', ' ')} UTC`);
+    if (!list.length) say('- None.');
+    for (const x of list) {
+      say(`- F${x.n} (${x.kind}) ${x.id}: ${x.title}.${x.tradeoff ? ` Cost: ${x.tradeoff}` : ''}${done.has(x.id) ? ' ALREADY APPLIED.' : ''}`);
+      (x.steps || []).forEach((t, i) => say(`    ${i + 1}. ${t}`));
+    }
   },
 
   apply() {

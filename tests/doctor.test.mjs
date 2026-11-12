@@ -12,7 +12,7 @@ const scripts = path.join(root, 'battery-doctor', 'scripts');
 const home = tmpDir();
 process.env.BATTERY_DOCTOR_HOME = home;       // must be set before the modules load
 const { summarize, dur } = await import('../battery-doctor/scripts/lib/parse.mjs');
-const { evaluate, quality } = await import('../battery-doctor/scripts/lib/rules.mjs');
+const { evaluate, quality, fixList } = await import('../battery-doctor/scripts/lib/rules.mjs');
 const { buildReport, reportData } = await import('../battery-doctor/scripts/lib/report.mjs');
 const { apply, undo, readLog } = await import('../battery-doctor/scripts/lib/fixes.mjs');
 const { unzip } = await import('../battery-doctor/scripts/lib/adb.mjs');
@@ -74,6 +74,16 @@ test('rules flag the planted problems and only offer fixes for installed apps', 
   assert.ok(!ids.some(id => id.includes('com.google.android.gms') || id.endsWith(':android')));
   assert.ok(!ids.includes('setting:wifi_scan_always_enabled'));
   assert.equal(quality(s).ok, true);
+});
+
+test('fix numbers count each fix once, and manual fixes carry steps', () => {
+  const flags = evaluate(summarize(writeDumps(tmpDir(), fakeDumps()), AT));
+  const all = flags.flatMap(f => f.fixes), list = fixList(flags, { manual: [{ title: 'By hand', steps: ['One'] }] });
+  assert.ok(all.length > new Set(all.map(x => x.id)).size, 'the fake phone repeats a fix');
+  assert.equal(list.length, new Set(all.map(x => x.id)).size + 1);
+  assert.deepEqual(list.map(x => x.n), list.map((_, i) => i + 1));
+  assert.equal(list[list.length - 1].id, 'manual:By hand');
+  for (const x of list) if (x.kind === 'manual') assert.ok(x.steps?.length, `no steps for ${x.id}`);
 });
 
 test('a short checkup is reported as not enough data', () => {

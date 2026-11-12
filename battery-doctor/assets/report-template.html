@@ -321,7 +321,7 @@ function fixes() {
   for (const fl of latest.flags) for (const x of fl.fixes) {
     if (seen.has(x.id)) continue; seen.add(x.id);
     if (x.kind === 'auto' && !doneBy[x.id]) canApply = true;
-    items.push(fixItem({ ...x, title: tidy(x.title) }, ++n));
+    items.push(fixItem({ ...x, title: tidy(x.title) }, ++n, x.steps?.map(tidy)));
   }
   const also = flags.filter(x => x !== top && !x.fixes.length);
   const alsoList = also.length ? h('ul.also', { 'aria-label': 'Also noticed' }, also.map(x => h('li', {}, h('b', {}, tidy(x.title)), tidy(f.explanations?.[x.id] || x.detail)))) : null;

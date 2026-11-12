@@ -123,6 +123,7 @@ If you try it on another phone, please [open a phone report](https://github.com/
 node battery-doctor/scripts/doctor.mjs status    # is the phone connected
 node battery-doctor/scripts/doctor.mjs check     # run a checkup and build the report
 node battery-doctor/scripts/doctor.mjs report    # open the report
+node battery-doctor/scripts/doctor.mjs fixes     # list the numbered fixes
 node battery-doctor/scripts/doctor.mjs changes   # list changes made
 node battery-doctor/scripts/doctor.mjs undo all  # reverse them
 ```

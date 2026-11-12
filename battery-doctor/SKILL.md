@@ -60,7 +60,7 @@ Details of each action and how to undo: `references/fixes.md`.
 
 ## Step 5: Check again
 
-Tell the user: use the phone as usual for a day, keep it unplugged, do not restart it, and come back before charging. When they return, run `check` again. The output compares the new checkup with the previous one, and the report shows every checkup on a timeline with the changes marked.
+Tell the user: use the phone as usual for a day, keep it unplugged, do not restart it, and come back before charging. When they return, run `check` again. The output compares the new checkup with the previous one, and the report shows every checkup on a calendar with the changes marked.
 
 Compare fairly. A period that includes a night drains slower than a daytime one, so say which kind each checkup covers when they differ.
 
@@ -68,6 +68,7 @@ Compare fairly. A period that includes a night drains slower than a daytime one,
 
 - "Undo that" or "put it back": run `changes` to list them, then `undo <id>` or `undo all`.
 - "Show the report": run `report`.
+- "Apply fix F1" (a number from the report): run `fixes` to see what that number is in the latest checkup. Confirm that exact change with the user (Rule 2), then follow Step 4.
 - "Is it better?": run `check` if the last checkup is older than the last change, otherwise read the comparison from the last `check`.
 
 ## Reference files

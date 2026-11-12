@@ -21,7 +21,15 @@ const restrict = app => ({ id: `restrict-background:${app}`, kind: 'auto', actio
 const stop = app => ({ id: `force-stop:${app}`, kind: 'auto', action: 'force-stop', target: app,
   title: `Close ${app} now`, tradeoff: 'It stays closed only until it is opened or restarts itself.' });
 const setting = (key, title, tradeoff) => ({ id: `setting:${key}`, kind: 'auto', action: 'setting', target: key, title, tradeoff });
-const manual = (id, title, tradeoff) => ({ id, kind: 'manual', title, tradeoff });
+const manual = (id, title, tradeoff, steps) => ({ id, kind: 'manual', title, tradeoff, steps });
+
+// Every fix once, numbered F1, F2, ... The report and the command line both use this order.
+export function fixList(flags, findings) {
+  const out = [], seen = new Set();
+  for (const f of flags) for (const x of f.fixes) { if (!seen.has(x.id)) { seen.add(x.id); out.push({ ...x, n: out.length + 1 }); } }
+  for (const x of findings?.manual || []) out.push({ id: `manual:${x.title}`, kind: 'manual', title: x.title, tradeoff: x.tradeoff, steps: x.steps, n: out.length + 1 });
+  return out;
+}
 
 export function quality(s) {
   const reasons = [];
@@ -61,7 +69,8 @@ export function evaluate(s) {
     add('frequent-wakeups', 'medium', `Woken often by: ${noisy.map(g => g.source.toLowerCase()).join(', ')}`,
       noisy.map(g => `${g.source}: ${g.count} wakeups, about ${Math.round(g.count / w.screenOffHours)} per idle hour, ${g.minutes} min awake.`).join(' '),
       { sources: noisy },
-      noisy.some(g => g.source === 'Bluetooth') ? [manual('review-bluetooth-devices', 'Disconnect Bluetooth devices and companion apps you do not need all day', 'Watches, earbuds and trackers lose their live connection.')] : []);
+      noisy.some(g => g.source === 'Bluetooth') ? [manual('review-bluetooth-devices', 'Disconnect Bluetooth devices and companion apps you do not need all day', 'Watches, earbuds and trackers lose their live connection.',
+        ['Open Settings, then Connected devices (Connections on Samsung)', 'Tap Bluetooth', 'Tap a device you do not need all day, then Disconnect'])] : []);
 
   for (const a of s.alarms || []) if (isThird(a.app) && third.size && a.perHour > LIMITS.alarmWakeupsPerHour)
     add(`app-wakeups:${a.app}`, 'medium', `${a.app} wakes the phone very often`,
@@ -82,12 +91,14 @@ export function evaluate(s) {
   for (const l of s.location || [])
     add(`location:${l.app}`, l.accuracy === 'HIGH_ACCURACY' ? 'medium' : 'info', `${l.app} is tracking location`,
       `Active request with ${l.accuracy.toLowerCase().replace('_', ' ')}.`, l,
-      [manual(`location-permission:${l.app}`, `Set location for ${l.app} to "Only while using the app"`, 'Features that need location in the background stop working.')]);
+      [manual(`location-permission:${l.app}`, `Set location for ${l.app} to "Only while using the app"`, 'Features that need location in the background stop working.',
+        ['Open Settings, then Apps', `Tap ${l.app}, then Permissions, then Location`, 'Choose "Allow only while using the app"'])]);
 
   for (const n of s.usage?.notifications || []) if (n.count >= LIMITS.notifications)
     add(`notifications:${n.app}`, 'info', `${n.app} sent ${n.count} notifications in a day`,
       'Each one can wake the phone and light the screen.', n,
-      [manual(`notifications:${n.app}`, `Turn off notification categories you do not need in ${n.app}`, 'You will miss those alerts.')]);
+      [manual(`notifications:${n.app}`, `Turn off notification categories you do not need in ${n.app}`, 'You will miss those alerts.',
+        ['Open Settings, then Notifications', `Tap ${n.app}`, 'Turn off the categories you do not need'])]);
 
   const topApp = (s.screenApps || [])[0];
   if (topApp && w.drainMah && topApp.mah / w.drainMah >= LIMITS.screenAppShare)
