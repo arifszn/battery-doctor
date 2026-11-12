@@ -171,12 +171,15 @@ h2 { font-weight: 600; font-size: var(--h2); line-height: 1.25; letter-spacing: 
 .rows .f small { color: var(--muted); margin-left: 8px; font-family: var(--font); }
 .rows .gone { text-decoration: line-through; color: var(--muted); }
 .rows .sm { grid-column: 1 / -1; font-size: var(--t3); color: var(--muted); }
-.pick li { padding: 0; }
-.pick button, .pick .cur { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 20px; width: 100%; padding: 9px 0; }
-.pick .cur { color: var(--ink); font-weight: 600; }
-.pick .cur > :first-child::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--data); margin-right: 8px; vertical-align: 1px; }
-.pick button { color: var(--muted); }
-.pick button:hover { color: var(--ink); }
+.pick li { padding: 0; border-top: 0; display: block; }
+.pick li + li:not(.head) { margin-top: 2px; }
+.pick .head, .pick button, .pick .cur { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 6.5rem); gap: 12px; width: 100%; padding: 8px 12px; text-align: left; font-size: var(--t3); }
+.pick .head { align-items: end; padding-top: 0; padding-bottom: 6px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.pick .head > :not(:first-child), .pick button > :not(:first-child), .pick .cur > :not(:first-child) { text-align: right; }
+.pick button, .pick .cur { border-radius: 8px; }
+.pick .cur { background: var(--band); color: var(--ink); font-weight: 500; }
+.pick button { color: var(--ink-2); }
+.pick button:hover { background: var(--soft); color: var(--ink); }
 .lv { position: relative; }
 .lv svg { display: block; width: 100%; height: auto; }
 .lv text { font: 400 12px var(--font); fill: var(--muted); }
@@ -207,8 +210,7 @@ h2 { font-weight: 600; font-size: var(--h2); line-height: 1.25; letter-spacing: 
   h1 { font-size: 22px; line-height: 1.2; }
   .day { min-height: 54px; padding: 4px 5px; }
   .day .dv { font-size: 15px; }
-  .pick button, .pick .cur { grid-template-columns: auto auto; justify-content: space-between; gap: 0 16px; }
-  .pick button > :first-child, .pick .cur > :first-child { grid-column: 1 / -1; }
+  .pick .head, .pick button, .pick .cur { grid-template-columns: minmax(0, 1fr) repeat(3, 3.6rem); gap: 6px; padding-left: 8px; padding-right: 8px; }
 }
 
 </style>
@@ -524,8 +526,8 @@ function detailBody() {
   const cell = (v, u) => v == null ? '–' : `${v}${u || ''}`;
   const sec = (t, ...k) => h('section', {}, h('h3', {}, t), ...k);
   const body = h('div.more-in', {},
-    sec(`All checkups (${cs.length})`, h('ul.rows.pick', {}, cs.map((x, i) => [x, i]).reverse().filter(([, i], k) => showAll || k < 5 || i === sel).map(([x, i]) => h('li', {}, h(i === sel ? 'div.cur' : 'button', i === sel ? { 'aria-current': 'true' } : { type: 'button', on: { click: () => { sel = i; phone(); renderDetails(true); if (window.__tl.isConnected) timeline(window.__tl); } } },
-      h('span', {}, dayTime(x.takenAt)), h('span', {}, `${cell(n1(x.screenTime), ' h')} screen time`), h('span', {}, `${cell(n1(x.idle?.pctPerHour), '%')} idle`))))),
+    sec(`All checkups (${cs.length})`, h('ul.rows.pick', {}, h('li.head', {}, h('span', {}, 'Checkup'), h('span', {}, 'Screen on'), h('span', {}, 'Screen off'), h('span', {}, 'Idle, per hour')), cs.map((x, i) => [x, i]).reverse().filter(([, i], k) => showAll || k < 5 || i === sel).map(([x, i]) => h('li', {}, h(i === sel ? 'div.cur' : 'button', i === sel ? { 'aria-current': 'true' } : { type: 'button', on: { click: () => { sel = i; phone(); renderDetails(true); if (window.__tl.isConnected) timeline(window.__tl); } } },
+      h('span', {}, dayTime(x.takenAt)), h('span', {}, cell(n1(x.window?.screenOnHours), ' h')), h('span', {}, cell(n1(x.window?.screenOffHours), ' h')), h('span', {}, cell(n1(x.idle?.pctPerHour), '%')))))),
       cs.length > 5 ? h('button.showall', { type: 'button', on: { click: () => { showAll = !showAll; renderDetails(true); } } }, showAll ? 'Show the latest 5' : `Show all ${cs.length} checkups`) : null),
     sec(`Checkup on ${dayTime(c.takenAt)}`, h('p.sub', {}, w.hoursOnBattery != null ? `${n1(w.hoursOnBattery)} h on battery, ${w.dischargedPct ?? 0}% used. Shaded: screen on.${b.levelPct != null && c.levels?.length && b.levelPct > c.levels[c.levels.length - 1][1] + 3 ? ` The curve stops where the phone was put on charge; it was at ${b.levelPct}% at the checkup.` : ''}` : ''), lvHost),
     sec(apps.length ? 'Battery used while each app was on screen' : 'Battery used by app, as estimated by Android', rows(apps.length ? apps : est, 'This phone did not report battery use by app.')),
