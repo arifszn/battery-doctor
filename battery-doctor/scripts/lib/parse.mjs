@@ -68,16 +68,23 @@ function battery(bat, bs) {
   const level = num(/\n\s*level: (\d+)/), scale = num(/\n\s*scale: (\d+)/) || 100;
   const counter = num(/\n\s*Charge counter: (\d+)/);
   const temp = num(/\n\s*temperature: (-?\d+)/);
-  const cap = /Capacity: (\d+), Rated: \d+, Typical: (\d+)/.exec(bs) || /Capacity: (\d+)/.exec(bs);
-  const design = cap ? +(cap[2] || cap[1]) : null;
+  const cap = /Capacity: (\d+), Rated: \d+, Typical: (\d+)/.exec(bs);
+  // "Estimated" is the capacity the phone was built with; "Capacity:" alone can be the worn figure Android learned.
+  const est = /Estimated battery capacity: (\d+) mAh/.exec(bs), plain = /Capacity: (\d+)/.exec(bs);
+  const design = cap ? +cap[2] : est ? +est[1] : plain ? +plain[1] : null;
   const pct = level != null ? level / scale * 100 : null;
   // Charge counter divided by level is noisy near empty, so only trust it above 20%.
   const measured = counter && pct >= 20 ? counter / pct * 100 / 1000 : null;
   const asoc = num(/mSavedBatteryAsoc: \[(\d+)\]/);       // Samsung only
-  const health = asoc ?? (measured && design ? Math.min(100, measured / design * 100) : null);
+  // What Android learned the battery holds at its last full charges. Used when the charge counter gives nothing;
+  // a figure far from the design capacity is a placeholder, not a measurement.
+  const lrn = /Last learned battery capacity: (\d+) mAh/.exec(bs);
+  const learned = lrn && design && +lrn[1] / design >= 0.3 && +lrn[1] / design <= 1.15 ? +lrn[1] : null;
+  const full = measured ?? learned;
+  const health = asoc ?? (full && design ? Math.min(100, full / design * 100) : null);
   return {
-    levelPct: round(pct, 0), designMah: design, measuredFullMah: round(measured, 0),
-    healthPct: round(health, 0), healthSource: asoc != null ? 'vendor' : health != null ? 'measured' : null,
+    levelPct: round(pct, 0), designMah: design, measuredFullMah: round(full, 0),
+    healthPct: round(health, 0), healthSource: asoc != null ? 'vendor' : measured && design ? 'measured' : health != null ? 'learned' : null,
     temperatureC: temp != null ? round(temp / 10) : null,
   };
 }
@@ -140,14 +147,18 @@ function history(file, design) {
   const levels = [], screens = [];
   let scr = false, top = null, cur = null, last = null, plug = false, recharged = false, plugAt = null, plugLevel = null, t0 = null, lastLevel = null, scrStart = null, year = new Date().getFullYear(), samples = 0;
   // Screen-off time per hour of the day (phone clock): [seconds, mA·seconds measured, % of battery dropped, seconds with a current reading].
-  // Absolute stamps are the phone clock already; relative ones count from the RESET:TIME line.
+  // Absolute stamps are the phone clock already; relative ones count from the RESET:TIME line, or from a TIME line,
+  // which the phone writes each time its clock is set.
   const byHour = Array.from({ length: 24 }, () => [0, 0, 0, 0]);
-  let resetClock = null, relative = false;
+  let resetClock = null, relative = false, firstClock = null;
+  const clock = m => Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) / 1000;
   const hourOf = t => { const c = relative ? (resetClock == null ? null : resetClock + t) : t; return c == null ? null : Math.floor(((c % 86400) + 86400) % 86400 / HOUR); };
   const re = /^\s+(?:(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\.(\d+)|\+?((?:\d+(?:ms|[dhms]))+))\s+(?:\(\d+\)\s+)?(\d{3})(?:\s|$)(.*)/;
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
     const reset = /RESET:TIME: (\d{4})-(\d\d)-(\d\d)-(\d\d)-(\d\d)-(\d\d)/.exec(line);
-    if (reset) { year = +reset[1]; resetClock = Date.UTC(year, +reset[2] - 1, +reset[3], +reset[4], +reset[5], +reset[6]) / 1000; }
+    if (reset) { year = +reset[1]; resetClock = clock(reset); firstClock ??= resetClock; }
+    const set = reset ? null : /^\s+\+?((?:\d+(?:ms|[dhms]))+|0)\s+(?:\(\d+\)\s+)?TIME: (\d{4})-(\d\d)-(\d\d)-(\d\d)-(\d\d)-(\d\d)/.exec(line);
+    if (set) { resetClock = clock(set.slice(1)) - dur(set[1]); firstClock ??= resetClock; }
     const m = re.exec(line);
     if (!m) continue;
     let t = m[1] ? Date.UTC(year, +m[1] - 1, +m[2], +m[3], +m[4], +m[5], +m[6].slice(0, 3)) / 1000 : dur(m[7]);
@@ -194,7 +205,7 @@ function history(file, design) {
   return {
     hasCurrent: samples > 20, screenOn: avg('on'), screenOff: avg('off'), apps,
     levels: levels.filter((_, i) => i % step === 0 || i === levels.length - 1), screenSpans: screens.filter(s => s[1] - s[0] >= 0.02),
-    spanHours: round((last - t0) / HOUR), designMah: design,
+    spanHours: round((last - t0) / HOUR), designMah: design, firstClock,
     offByHour: byHour.map(([s, mas, pct, sc]) => [Math.round(s), samples > 20 ? Math.round(mas) : null, pct, Math.round(sc)]),
   };
 }
@@ -285,6 +296,12 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   const w = safe(() => windowStats(bs));
   const h = safe(() => history(path.join(rawDir, 'history.txt'), b.designMah));
   const year = +takenAt.slice(0, 4);
+  // A phone that sets its clock again, as after a restart on an empty battery, moves its start clock to that moment.
+  // The history still holds the clock from before, so an earlier clock there is the better start.
+  if (w && h?.firstClock != null && (!w.startedAt || h.firstClock < Date.parse(w.startedAt + 'Z') / 1000 - 60)) {
+    w.startedAt = new Date(h.firstClock * 1000).toISOString().slice(0, 19);
+    w.startFrom = 'history';
+  }
 
   // Idle drain in % of a full battery per hour. Measured current when the phone records it,
   // otherwise the percentage Android attributes to screen-off time.
@@ -296,7 +313,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   else if (w?.dischargedScreenOnPct != null && w.screenOnHours >= 0.5) active = { pctPerHour: round(w.dischargedScreenOnPct / w.screenOnHours, 1), ma: null, hours: w.screenOnHours };
 
   return {
-    version: 4, takenAt, device: device(read), battery: b, window: w,
+    version: 5, takenAt, device: device(read), battery: b, window: w,
     rebootedInWindow: upHours != null && w ? upHours < w.hoursOnBattery - 0.2 : null, uptimeHours: round(upHours),
     hoursPerCharge: w?.dischargedPct >= 5 ? round(w.hoursOnBattery / w.dischargedPct * 100) : null,
     idle, active,

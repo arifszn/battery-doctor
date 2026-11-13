@@ -60,7 +60,7 @@ function printSummary(s, flagsList, q, prev) {
   say(`Phone: ${[d.manufacturer, d.model].filter(Boolean).join(' ') || 'unknown'}, Android ${d.android ?? '?'}`);
   say(`Battery: ${pct(b.levelPct)} now, health ${pct(b.healthPct)}${b.healthSource ? ` (${b.healthSource})` : ''}, ${b.temperatureC ?? '?'} °C`);
   if (w) {
-    say(`\n## Since the last full charge (${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' : 'start unknown'})`);
+    say(`\n## Since the last full charge (${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' + (w.startFrom === 'history' ? ', the earliest time in the phone\'s history because its clock was set again later' : '') : 'start unknown'})`);
     say(`- On battery ${w.hoursOnBattery} h, used ${pct(w.dischargedPct)}: screen on ${w.screenOnHours} h, screen off ${w.screenOffHours} h`);
     const st = screenTime(s);
     if (st != null) say(`- Screen time from a full charge: about ${st} h (this period: ${w.screenOnHours} h of screen, ${pct(w.dischargedPct)} of the battery used, idle time included)`);

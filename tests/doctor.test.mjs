@@ -227,7 +227,7 @@ test('a checkup saved by an older version is read again from its raw dumps', () 
   const { offByHour, restrictions, ...old } = JSON.parse(fs.readFileSync(file, 'utf8'));
   fs.writeFileSync(file, JSON.stringify({ ...old, version: 1 }));
   assert.ok(reportData(dir).checkups[0].offByHour);
-  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 4);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 5);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {
@@ -335,4 +335,30 @@ test('long periods and battery saver are pointed out', () => {
   assert.ok(!ids(s).includes('long-period') && !ids(s).includes('battery-saver'));
   assert.ok(ids({ ...s, window: { ...s.window, hoursOnBattery: 60 } }).includes('long-period'));
   assert.ok(ids({ ...s, settings: { ...s.settings, low_power: '1' } }).includes('battery-saver'));
+});
+
+test('a start clock that was set again later gives way to the earliest clock in the history', () => {
+  const d = fakeDumps({ style: 'aosp', idleMa: 100, activeMa: 400 });
+  d['batterystats.txt'] = d['batterystats.txt'].replace('Start clock time: 2026-11-03-08-00-00', 'Start clock time: 2026-11-03-17-50-00');
+  d['history.txt'] = d['history.txt'].replace('0 (15) RESET:TIME: 2026-11-03-08-00-00', '0 (24) TIME: 2026-11-03-08-00-00');
+  const s = summarize(writeDumps(tmpDir(), d), AT);
+  assert.equal(s.window.startedAt, '2026-11-03T08:00:00');
+  assert.equal(s.window.startFrom, 'history');
+  assert.ok(s.offByHour[9][0] > 0);            // hours of the day still resolve without a RESET line
+  const same = summarize(writeDumps(tmpDir(), fakeDumps({ style: 'aosp' })), AT);
+  assert.equal(same.window.startedAt, '2026-11-03T08:00:00');
+  assert.equal(same.window.startFrom, undefined);
+});
+
+test('battery health falls back to the capacity Android learned when the charge counter gives nothing', () => {
+  const d = fakeDumps({ style: 'aosp' });
+  d['battery.txt'] = d['battery.txt'].replace(/level: \d+/, 'level: 4');
+  d['batterystats.txt'] = d['batterystats.txt'].replace('Capacity: 5000, Rated: 4855, Typical: 5000,', 'Capacity: 4910,')
+    .replace('Statistics since last charge:', '  Estimated battery capacity: 5000 mAh\n  Last learned battery capacity: 4910 mAh\nStatistics since last charge:');
+  const s = summarize(writeDumps(tmpDir(), d), AT);
+  assert.equal(s.battery.designMah, 5000);
+  assert.equal(s.battery.healthPct, 98);
+  assert.equal(s.battery.healthSource, 'learned');
+  d['batterystats.txt'] = d['batterystats.txt'].replace('Last learned battery capacity: 4910', 'Last learned battery capacity: 1000');
+  assert.equal(summarize(writeDumps(tmpDir(), d), AT).battery.healthPct, null);   // a placeholder is not a measurement
 });

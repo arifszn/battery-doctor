@@ -9,11 +9,12 @@ const pad = n => String(n).padStart(2, '0');
 export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hours = 10, screenOnHours = 4, start = '2026-11-03-08-00-00', bleScan = '1', background = [], restricted = [] } = {}) {
   const offHours = hours - screenOnHours;
   const hist = ['Battery History [Format: 2] (1% used):'];
+  const day = start.slice(5, 10);   // the history starts where the statistics say the period starts
   const stamp = sec => style === 'samsung'
-    ? `11-03 ${pad(8 + Math.floor(sec / 3600))}:${pad(Math.floor(sec / 60) % 60)}:${pad(sec % 60)}.000`
+    ? `${day} ${pad(8 + Math.floor(sec / 3600))}:${pad(Math.floor(sec / 60) % 60)}:${pad(sec % 60)}.000`
     : `+${Math.floor(sec / 3600)}h${Math.floor(sec / 60) % 60}m${sec % 60}s000ms (2)`;
-  if (style === 'samsung') hist.push('  11-03 08:00:00.000 RESET:TIME: 2026-11-03-08-00-00-000');
-  else hist.push('                    0 (15) RESET:TIME: 2026-11-03-08-00-00');
+  if (style === 'samsung') hist.push(`  ${day} 08:00:00.000 RESET:TIME: ${start}-000`);
+  else hist.push(`                    0 (15) RESET:TIME: ${start}`);
   let level = 100;
   const total = hours * 3600, offEnd = offHours * 3600;
   for (let t = 0; t <= total; t += 300) {

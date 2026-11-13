@@ -18,7 +18,7 @@ export function loadCheckups(dir) {
   const all = fs.readdirSync(root).sort().map(id => {
     let summary = json(path.join(root, id, 'summary.json'));
     // A checkup saved by an older version is read again from its raw dumps, for the figures added since.
-    if (summary && (summary.version ?? 1) < 4 && fs.existsSync(path.join(root, id, 'raw', 'history.txt'))) {
+    if (summary && (summary.version ?? 1) < 5 && fs.existsSync(path.join(root, id, 'raw', 'history.txt'))) {
       try { summary = summarize(path.join(root, id, 'raw'), summary.takenAt); fs.writeFileSync(path.join(root, id, 'summary.json'), JSON.stringify(summary, null, 2)); } catch { /* keep the saved one */ }
     }
     return summary && { id, summary, findings: json(path.join(root, id, 'findings.json')) };
