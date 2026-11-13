@@ -16,7 +16,7 @@ Sources: Android's official guides, [Configure on-device developer options](http
    | Other brands | Open Settings and search for "Build number". Some brands use their own version name instead, for example "MIUI version" or "OS version". |
 
 2. **Turn on USB debugging.** Open Settings and search for "Developer options" (on most phones it is under Settings > System). Turn on **USB debugging**.
-3. **Connect the cable** to the computer and unlock the phone.
+3. **Connect the cable** to the computer and unlock the phone. If the cable is already connected, unplug it and plug it in again.
 4. **Tap Allow** on the "Allow USB debugging?" prompt. Ticking "Always allow from this computer" avoids the prompt next time.
 
 The user can turn USB debugging off again when they are finished. Say so at the end of the session.
