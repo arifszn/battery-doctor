@@ -404,3 +404,20 @@ test('compare lists the saved checkups and compares any two of them', () => {
   assert.equal(doctor('2026-11-03T18-00-00', '2026-11-04T08-30-00').status, 1);
   assert.equal(doctor('2026-11-03T18-00-00', 'nope').status, 1);
 });
+
+test('a fix the plan says not to do is not offered again, and the problem stays listed with the reason', () => {
+  const dir = path.join(home, 'declined-phone');
+  seed(dir, '2026-11-03T18-00-00', {});
+  const ids = () => reportData(dir).checkups[0].flags.flatMap(f => f.fixes.map(x => x.id));
+  assert.ok(ids().includes('restrict-background:com.example.tracker'));
+  fs.writeFileSync(path.join(dir, 'plan.json'), JSON.stringify({ notDoing: [{ what: 'Stopping Tracker', why: 'It costs nothing measurable.', fixes: ['restrict-background:com.example.tracker', 'force-stop:com.example.tracker'] }] }));
+  assert.ok(!ids().some(id => id.endsWith(':com.example.tracker') && !id.startsWith('location-permission')));
+  const flag = reportData(dir).checkups[0].flags.find(f => f.id === 'always-running:com.example.tracker');
+  assert.match(flag.detail, /You chose to leave this as it is: It costs nothing measurable\./);
+  const r = spawnSync(process.execPath, [path.join(scripts, 'doctor.mjs'), 'fixes', `--dir=${dir}`], { encoding: 'utf8', env: { ...process.env, ADB: 'no-such-adb' } });
+  assert.ok(!/restrict-background:com\.example\.tracker|force-stop:com\.example\.tracker/.test(r.stdout));
+  assert.match(r.stdout, /F1 /);
+  // an entry without fix ids stays a note
+  fs.writeFileSync(path.join(dir, 'plan.json'), JSON.stringify({ notDoing: [{ what: 'Stopping Tracker', why: 'x' }] }));
+  assert.ok(ids().includes('restrict-background:com.example.tracker'));
+});

@@ -19,7 +19,7 @@ export function readPlan(dir) {
     nextCheckup: nc && (nc.after || nc.how) ? nc : null,
     decide: list(raw.decide, x => text(x)),
     investigate: list(raw.investigate, x => text(x)),
-    notDoing: list(raw.notDoing, x => (x && typeof x === 'object' && text(x.what) ? { what: text(x.what), why: text(x.why) } : null)),
+    notDoing: list(raw.notDoing, x => (x && typeof x === 'object' && text(x.what) ? { what: text(x.what), why: text(x.why), fixes: list(x.fixes, v => text(v, 160)) } : null)),
   };
   if (!plan.testing && !plan.nextCheckup && !plan.decide.length && !plan.investigate.length && !plan.notDoing.length) return null;
   return { ...plan, updatedAt };

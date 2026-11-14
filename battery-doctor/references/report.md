@@ -54,7 +54,7 @@ Write `plan.json` in the phone's folder (the folder above `checkups`; `node <ski
   "nextCheckup": { "after": "14 Nov 2026", "how": "Use the phone unplugged for a normal day, do not restart it, and check before charging." },
   "decide": ["Whether the watch connection is worth about 1% an hour while idle."],
   "investigate": ["What wakes the phone about 1,700 times a day through app timers."],
-  "notDoing": [{ "what": "Restricting Telegram", "why": "It uses little in the background, and messages would arrive late." }]
+  "notDoing": [{ "what": "Restricting Telegram", "why": "It uses little in the background, and messages would arrive late.", "fixes": ["restrict-background:org.telegram.messenger"] }]
 }
 ```
 
@@ -64,7 +64,7 @@ Write `plan.json` in the phone's folder (the folder above `checkups`; `node <ski
 | `nextCheckup` | `after`: the earliest useful date. `how`: the conditions that make the checkup comparable. |
 | `decide` | Choices the user still has to make, each with the figure it depends on. |
 | `investigate` | Causes not explained yet. |
-| `notDoing` | Fixes the user turned down or that are not worth it, with the reason, so they are not offered again. |
+| `notDoing` | Fixes the user turned down or that are not worth it, with the reason. `fixes` lists the fix ids from the `check` output that the entry covers (for example `restrict-background:com.example.app` and `force-stop:com.example.app`). Those fixes leave the report, the `fixes` list and later checkups; the problem stays listed with the reason. Without `fixes` the entry is only a note and the fix is offered again. |
 
 Write it after the user picks fixes, and again after every `check`. Same writing rules as below.
 

@@ -17,7 +17,7 @@ import path from 'node:path';
 import { HOME, DOWNLOAD_URL, findAdb, downloadAdb, devices, shell } from './lib/adb.mjs';
 import { collect } from './lib/collect.mjs';
 import { summarize } from './lib/parse.mjs';
-import { evaluate, quality, fixList, screenTime } from './lib/rules.mjs';
+import { evaluate, withoutDeclined, quality, fixList, screenTime } from './lib/rules.mjs';
 import { apply, undo, note, readLog, recordPhoneChanges, ACTIONS, SETTINGS } from './lib/fixes.mjs';
 import { sameHours, phoneChanges } from './lib/compare.mjs';
 import { buildReport, loadCheckups, openInBrowser, ASSETS } from './lib/report.mjs';
@@ -166,7 +166,7 @@ const commands = {
     const raw = await collect(bin, serial, cdir, m => console.error(`  ${m}`));
     const s = summarize(raw, takenAt);
     fs.writeFileSync(path.join(cdir, 'summary.json'), JSON.stringify(s, null, 2));
-    const q = quality(s), fl = evaluate(s);
+    const q = quality(s), fl = withoutDeclined(evaluate(s), readPlan(dir));
     const same = before.filter(c => s.window?.startedAt && c.summary.window?.startedAt === s.window.startedAt).pop()?.summary;
     const last = before[before.length - 1]?.summary;
     const found = last ? recordPhoneChanges(dir, phoneChanges(last, s, readLog(dir)), s.takenAt) : [];
@@ -204,7 +204,7 @@ const commands = {
   fixes() {
     const dir = pickDir(), last = loadCheckups(dir).pop();
     if (!last) fail('No checkups yet. Run "node doctor.mjs check" first.');
-    const list = fixList(evaluate(last.summary), last.findings);
+    const list = fixList(withoutDeclined(evaluate(last.summary), readPlan(dir)), last.findings);
     // a setting still reported as on after it was turned off has been changed back on the phone
     const done = new Set(readLog(dir).filter(e => e.verified && !e.undoneAt && e.action !== 'force-stop' && !(e.action === 'setting' && last.summary.takenAt > e.at)).map(e => `${e.action}:${e.target}`));
     say(`# Fixes from the checkup of ${last.summary.takenAt.slice(0, 16).replace('T', ' ')} UTC`);

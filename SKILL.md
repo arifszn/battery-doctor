@@ -66,7 +66,7 @@ Tell the user: use the phone as usual for a day, keep it unplugged, do not resta
 
 Compare fairly. A period that includes a night drains slower than a daytime one. When the comparison has a `Same hours of the day` figure, give that one as the result and name the hours; otherwise say which kind of period each checkup covers when they differ.
 
-Then write `plan.json` (format in `battery-doctor/references/report.md`): what the next checkup tests, when and how to take it, what the user still has to decide, what is not explained yet, and which fixes they turned down and why. Run `report` so the report shows it. Update the plan after every `check`, and whenever the user decides something or changes the phone by hand.
+Then write `plan.json` (format in `battery-doctor/references/report.md`): what the next checkup tests, when and how to take it, what the user still has to decide, what is not explained yet, and which fixes they turned down and why. For each fix turned down, put its fix ids in that entry's `fixes`, or the report keeps offering it. Run `report` so the report shows it. Update the plan after every `check`, and whenever the user decides something or changes the phone by hand.
 
 ## Other requests
 

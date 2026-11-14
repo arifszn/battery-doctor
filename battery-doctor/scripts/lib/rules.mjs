@@ -33,6 +33,20 @@ export function fixList(flags, findings) {
   return out;
 }
 
+// A fix the user turned down is not offered again: the plan's notDoing entries name the fix ids they cover.
+// The problem itself stays listed, with the reason once none of its fixes is left.
+export function withoutDeclined(flags, plan) {
+  const no = new Map();
+  for (const d of plan?.notDoing || []) for (const id of d.fixes || []) no.set(id, d.why || d.what);
+  if (!no.size) return flags;
+  return flags.map(f => {
+    const cut = f.fixes.filter(x => no.has(x.id));
+    if (!cut.length) return f;
+    const fixes = f.fixes.filter(x => !no.has(x.id));
+    return { ...f, fixes, detail: fixes.length ? f.detail : `${f.detail} You chose to leave this as it is: ${no.get(cut[0].id)}` };
+  });
+}
+
 // Hours of screen time a full charge gives, scaled from what this checkup's period delivered.
 export function screenTime(s) {
   const w = s.window;

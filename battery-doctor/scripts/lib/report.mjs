@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { evaluate, quality, screenTime, LIMITS } from './rules.mjs';
+import { evaluate, withoutDeclined, quality, screenTime, LIMITS } from './rules.mjs';
 import { summarize } from './parse.mjs';
 import { readLog } from './fixes.mjs';
 import { readPlan } from './plan.mjs';
@@ -28,14 +28,15 @@ export function loadCheckups(dir) {
 }
 
 export function reportData(dir) {
+  const plan = readPlan(dir);
   const checkups = loadCheckups(dir).map(({ id, summary, findings }) => {
     const { thirdPartyApps, ...rest } = summary;
-    return { id, ...rest, flags: evaluate(summary), quality: quality(summary), screenTime: screenTime(summary), findings: findings || {} };
+    return { id, ...rest, flags: withoutDeclined(evaluate(summary), plan), quality: quality(summary), screenTime: screenTime(summary), findings: findings || {} };
   });
   if (!checkups.length) throw new Error('No checkups saved yet. Run "node doctor.mjs check" first.');
   // idle drain against the checkup before, over the hours of the day both cover
   checkups.forEach((c, i) => { c.sameHours = i ? sameHours(checkups[i - 1], c) : null; });
-  return { generatedAt: new Date().toISOString(), limits: LIMITS, checkups, changes: readLog(dir), plan: readPlan(dir) };
+  return { generatedAt: new Date().toISOString(), limits: LIMITS, checkups, changes: readLog(dir), plan };
 }
 
 export function buildReport(dir) {
