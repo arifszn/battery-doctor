@@ -69,9 +69,11 @@ function battery(bat, bs) {
   const counter = num(/\n\s*Charge counter: (\d+)/);
   const temp = num(/\n\s*temperature: (-?\d+)/);
   const cap = /Capacity: (\d+), Rated: \d+, Typical: (\d+)/.exec(bs);
-  // "Estimated" is the capacity the phone was built with; "Capacity:" alone can be the worn figure Android learned.
+  // Only the Rated/Typical line states what the battery held when new. "Estimated battery capacity" and a plain
+  // "Capacity:" follow what the battery holds today, so health measured against them reads about 100% on a worn battery.
   const est = /Estimated battery capacity: (\d+) mAh/.exec(bs), plain = /Capacity: (\d+)/.exec(bs);
   const design = cap ? +cap[2] : est ? +est[1] : plain ? +plain[1] : null;
+  const known = !!cap;
   const pct = level != null ? level / scale * 100 : null;
   // Charge counter divided by level is noisy near empty, so only trust it above 20%.
   const measured = counter && pct >= 20 ? counter / pct * 100 / 1000 : null;
@@ -80,11 +82,12 @@ function battery(bat, bs) {
   // a figure far from the design capacity is a placeholder, not a measurement.
   const lrn = /Last learned battery capacity: (\d+) mAh/.exec(bs);
   const learned = lrn && design && +lrn[1] / design >= 0.3 && +lrn[1] / design <= 1.15 ? +lrn[1] : null;
-  const full = measured ?? learned;
-  const health = asoc ?? (full && design ? Math.min(100, full / design * 100) : null);
+  const full = measured ?? (asoc == null ? learned : null);   // beside the maker's own figure a learned capacity only confuses
+  const health = asoc ?? (full && known ? Math.min(100, full / design * 100) : null);
   return {
-    levelPct: round(pct, 0), designMah: design, measuredFullMah: round(full, 0),
-    healthPct: round(health, 0), healthSource: asoc != null ? 'vendor' : measured && design ? 'measured' : health != null ? 'learned' : null,
+    // designMah turns a current into percent per hour; designKnown says whether it is the capacity when new
+    levelPct: round(pct, 0), designMah: design, designKnown: known, measuredFullMah: round(full, 0),
+    healthPct: round(health, 0), healthSource: asoc != null ? 'vendor' : health == null ? null : measured ? 'measured' : 'learned',
     temperatureC: temp != null ? round(temp / 10) : null,
   };
 }
@@ -130,7 +133,7 @@ function services(bs, pk) {
 }
 
 function estimatedApps(bs, pk) {
-  const rows = [...bs.matchAll(/\n  UID (\S+): ([\d.]+)/g)].map(m => ({ app: pk.name(m[1]), mah: round(+m[2], 0) }));
+  const rows = [...bs.matchAll(/\n[ \t]+UID (\S+): ([\d.]+)/g)].map(m => ({ app: pk.name(m[1]), mah: round(+m[2], 0) }));
   return rows.filter(r => r.mah >= 1).sort((a, b) => b.mah - a.mah).slice(0, 12);
 }
 
@@ -329,7 +332,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   else if (w?.dischargedScreenOnPct != null && w.screenOnHours >= 0.5) active = { pctPerHour: round(w.dischargedScreenOnPct / w.screenOnHours, 1), ma: null, hours: w.screenOnHours };
 
   return {
-    version: 6, takenAt, device: device(read), battery: b, window: w,
+    version: 7, takenAt, device: device(read), battery: b, window: w,
     rebootedInWindow: upHours != null && w ? upHours < w.hoursOnBattery - 0.2 : null, uptimeHours: round(upHours),
     hoursPerCharge: w?.dischargedPct >= 5 ? round(w.hoursOnBattery / w.dischargedPct * 100) : null,
     idle, active,

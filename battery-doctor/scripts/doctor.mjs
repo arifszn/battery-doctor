@@ -74,7 +74,7 @@ function printSummary(s, flagsList, q, prev) {
   const d = s.device, b = s.battery, w = s.window;
   say(`# Checkup ${s.takenAt.slice(0, 16).replace('T', ' ')} UTC`);
   say(`Phone: ${[d.manufacturer, d.model].filter(Boolean).join(' ') || 'unknown'}, Android ${d.android ?? '?'}`);
-  say(`Battery: ${pct(b.levelPct)} now, health ${pct(b.healthPct)}${b.healthSource ? ` (${b.healthSource})` : ''}, ${b.temperatureC ?? '?'} °C`);
+  say(`Battery: ${pct(b.levelPct)} now, health ${pct(b.healthPct)}${b.healthSource ? ` (${b.healthSource})` : b.measuredFullMah ? ` (the phone does not report its capacity when new; it holds about ${b.measuredFullMah} mAh now)` : ''}, ${b.temperatureC ?? '?'} °C`);
   if (w) {
     say(`\n## This period (since ${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' + (w.startFrom === 'history' ? ', the earliest time in the phone\'s history because its clock was set again later' : '') : 'an unknown time'}, when the phone last started its battery record)`);
     say(`- On battery ${w.hoursOnBattery} h, used ${pct(w.dischargedPct)}: screen on ${w.screenOnHours} h, screen off ${w.screenOffHours} h`);

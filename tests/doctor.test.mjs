@@ -227,7 +227,7 @@ test('a checkup saved by an older version is read again from its raw dumps', () 
   const { offByHour, restrictions, ...old } = JSON.parse(fs.readFileSync(file, 'utf8'));
   fs.writeFileSync(file, JSON.stringify({ ...old, version: 1 }));
   assert.ok(reportData(dir).checkups[0].offByHour);
-  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 6);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 7);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {
@@ -350,17 +350,32 @@ test('a start clock that was set again later gives way to the earliest clock in 
   assert.equal(same.window.startFrom, undefined);
 });
 
-test('battery health falls back to the capacity Android learned when the charge counter gives nothing', () => {
+test('battery health needs the capacity when new: learned capacity under 20%, unknown when the phone does not state it', () => {
   const d = fakeDumps({ style: 'aosp' });
   d['battery.txt'] = d['battery.txt'].replace(/level: \d+/, 'level: 4');
-  d['batterystats.txt'] = d['batterystats.txt'].replace('Capacity: 5000, Rated: 4855, Typical: 5000,', 'Capacity: 4910,')
-    .replace('Statistics since last charge:', '  Estimated battery capacity: 5000 mAh\n  Last learned battery capacity: 4910 mAh\nStatistics since last charge:');
+  d['batterystats.txt'] = d['batterystats.txt'].replace('Statistics since last charge:', '  Estimated battery capacity: 4907 mAh\n  Last learned battery capacity: 4910 mAh\nStatistics since last charge:');
   const s = summarize(writeDumps(tmpDir(), d), AT);
-  assert.equal(s.battery.designMah, 5000);
+  assert.equal(s.battery.designMah, 5000);     // the Typical figure, not the estimate
   assert.equal(s.battery.healthPct, 98);
   assert.equal(s.battery.healthSource, 'learned');
   d['batterystats.txt'] = d['batterystats.txt'].replace('Last learned battery capacity: 4910', 'Last learned battery capacity: 1000');
   assert.equal(summarize(writeDumps(tmpDir(), d), AT).battery.healthPct, null);   // a placeholder is not a measurement
+  // no Rated/Typical line: the figures left follow the worn battery, so health against them would read about 100%
+  const v = fakeDumps({ style: 'aosp' });
+  v['batterystats.txt'] = v['batterystats.txt'].replace('Capacity: 5000, Rated: 4855, Typical: 5000,', 'Capacity: 4910,')
+    .replace('Statistics since last charge:', '  Estimated battery capacity: 4907 mAh\n  Last learned battery capacity: 4910 mAh\nStatistics since last charge:');
+  const u = summarize(writeDumps(tmpDir(), v), AT);
+  assert.equal(u.battery.healthPct, null);
+  assert.equal(u.battery.healthSource, null);
+  assert.equal(u.battery.designKnown, false);
+  assert.ok(u.battery.measuredFullMah > 4000);
+  assert.ok(!evaluate(u).some(f => f.id === 'battery-worn'));
+});
+
+test('the per-app estimate is read whatever its indent', () => {
+  const d = fakeDumps({ style: 'aosp' });
+  d['batterystats.txt'] = d['batterystats.txt'].replace(/\n  UID /g, '\n    UID ');
+  assert.equal(summarize(writeDumps(tmpDir(), d), AT).estimatedApps[0].app, 'com.example.video');
 });
 
 test('an app that runs all day is found from the whole period, also when its service started before the usage records', () => {

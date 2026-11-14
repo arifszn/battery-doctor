@@ -56,6 +56,7 @@ The script decides what is a problem. These are rules of thumb from field use on
 | Battery health marked `vendor` | The phone maker's own figure (Samsung). |
 | Battery health marked `measured` | An estimate from the charge counter. Can be off by several points, and is missing when the battery is under 20%. |
 | Battery health marked `learned` | The capacity Android learned at the last full charges, against the capacity when new. Used when the battery is under 20%. It only updates at a full charge, so it can be out of date. |
+| Battery health `unknown` | The phone does not report what its battery held when new, which is the case on most phones that are not Samsung. Do not call the battery healthy or worn. Give the capacity it holds now and tell the user to compare it with the capacity printed for their model. |
 
 ## Giving advice
 

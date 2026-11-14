@@ -551,7 +551,7 @@ function detailBody() {
     sec('Changes made', D.changes.length ? h('ul.rows', {}, [...D.changes].reverse().map(x => h('li', {}, h('span.n' + (x.undoneAt ? '.gone' : ''), {}, changeText(x)), h('span.f', {}, day(x.at)),
       x.undoneAt ? h('span.sm', {}, `Undone ${day(x.undoneAt)}`) : !x.verified ? h('span.sm', {}, 'The phone did not confirm this change.') : null))) : h('p.sub', {}, 'No changes have been made to this phone.')),
     sec('The battery itself', h('ul.rows', {}, [
-      ['Holds', b.healthPct != null ? `${b.healthPct}% of original` : null], ['Capacity when new', b.designMah ? `${b.designMah.toLocaleString('en')} mAh` : null],
+      ['Holds', b.healthPct != null ? `${b.healthPct}% of original` : null], ['Capacity when new', b.designMah && b.designKnown !== false ? `${b.designMah.toLocaleString('en')} mAh` : null],
       ['Capacity now', b.measuredFullMah ? `${b.measuredFullMah.toLocaleString('en')} mAh` : null], ['Temperature', b.temperatureC != null ? `${n1(b.temperatureC)} °C` : null],
       ['Phone', maker(d) || null], ['Android', d.android]].filter(([, v]) => v != null).map(([k, v]) => h('li', {}, h('span.n', {}, k), h('span.f', {}, v))))));
   return body;
