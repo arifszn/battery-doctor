@@ -12,7 +12,7 @@ export const LIMITS = {
   alarmWakeupsPerHour: 20,                    // per third-party app
   btScanHours: 2, btScanShare: 0.5,           // an app scanning Bluetooth this long, and this share of the checkup period
   sensorMinutes: 30,                          // an installed app holding a sensor this long without a break
-  fgServiceHours: 6,                          // per 24 h
+  fgServiceHours: 6,                          // per 24 h; over a longer period, per 24 h of it
   notifications: 100,                         // per 24 h
   screenAppShare: 0.25, screenShare: 0.7,
   healthLow: 80, hotC: 40,
@@ -71,7 +71,7 @@ export function evaluate(s) {
     add('awake-while-off', 'medium', 'The phone stays awake with the screen off',
       `It was awake ${w.awakeWhileOffPct}% of the time the screen was off.`, { awakeWhileOffPct: w.awakeWhileOffPct });
 
-  const quiet = ['Other', 'Charger or USB', 'App timers and alarms'];   // timers are judged per app below
+  const quiet = ['Other', 'Charger or USB', 'Power button', 'App timers and alarms'];   // timers are judged per app below
   const noisy = (s.wakeups || []).filter(g => !quiet.includes(g.source) && w.screenOffHours > 0
     && (g.count / w.screenOffHours > LIMITS.wakeupsPerIdleHour || g.minutes / 60 / w.screenOffHours > LIMITS.wakeAwakeShare));
   if (noisy.length)
@@ -90,7 +90,14 @@ export function evaluate(s) {
     add(`bt-scan:${b.app}`, 'medium', `${b.app} scans for Bluetooth devices for hours`,
       `It scanned for ${b.hours} h of the ${w.hoursOnBattery} h in this checkup.`, b, third.has(b.app) ? [restrict(b.app), stop(b.app)] : []);
 
-  for (const f of s.usage?.foregroundServices || []) if (third.has(f.app) && f.hours >= LIMITS.fgServiceHours)
+  // Over the whole period when the phone reports it, which also catches a service that started days ago; else the last 24 h.
+  const running = new Set(), perDay = LIMITS.fgServiceHours * Math.max(1, (w.hoursOnBattery || 0) / 24);
+  for (const f of s.backgroundServices || []) if (third.has(f.app) && f.hours >= perDay) {
+    running.add(f.app);
+    add(`always-running:${f.app}`, 'medium', `${f.app} runs all day`,
+      `It kept a background service running for ${f.hours} h of the ${w.hoursOnBattery} h in this checkup.`, f, [restrict(f.app), stop(f.app)]);
+  }
+  for (const f of s.usage?.foregroundServices || []) if (third.has(f.app) && f.hours >= LIMITS.fgServiceHours && !running.has(f.app))
     add(`always-running:${f.app}`, 'medium', `${f.app} runs all day`,
       `It kept a background service running for ${f.hours} h in the last 24 h.`, f, [restrict(f.app), stop(f.app)]);
 

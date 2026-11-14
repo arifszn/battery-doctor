@@ -30,7 +30,7 @@ The script decides what is a problem. These are rules of thumb from field use on
 | `frequent-wakeups` | A hardware source (Bluetooth, mobile network, Wi-Fi, stylus, sensors) woke the phone over 60 times per idle hour, or kept it awake over 5% of idle time |
 | `app-wakeups:<app>` | An installed app set over 20 wakeup alarms per hour |
 | `bt-scan:<app>` | An app scanned for Bluetooth devices for 2 hours or more and at least half the period |
-| `always-running:<app>` | An installed app ran in the background 6 hours or more in the last 24 |
+| `always-running:<app>` | An installed app kept a background service running 6 hours or more per 24 hours of the period, or 6 hours or more in the last 24 |
 | `sensor:<app>` | An installed app held a sensor for 30 minutes or more without a break |
 | `location:<app>` | An installed app has an active location request |
 | `notifications:<app>` | 100 or more notifications in 24 hours |

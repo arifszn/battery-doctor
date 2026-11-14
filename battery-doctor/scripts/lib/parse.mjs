@@ -114,15 +114,31 @@ function windowStats(bs) {
   };
 }
 
+// Time each app kept a background (foreground-type) service running over the whole period, from the per-app
+// section of the battery statistics. The usage events cover 24 h only and miss a service that started before them.
+function services(bs, pk) {
+  const tot = new Map();
+  let uid = null, found = false;
+  for (const line of bs.split('\n')) {
+    const u = /^  (u\d+a\d+|\d+):\s*$/.exec(line);
+    if (u) { uid = u[1]; continue; }
+    const m = uid && /^\s+Foreground services: (.+?) realtime/.exec(line);
+    if (m) { found = true; const app = pk.name(uid); tot.set(app, (tot.get(app) || 0) + dur(m[1])); }
+  }
+  if (!found) return null;
+  return [...tot].map(([app, s]) => ({ app, hours: round(s / HOUR) })).filter(r => r.hours >= 0.5).sort((a, b) => b.hours - a.hours).slice(0, 8);
+}
+
 function estimatedApps(bs, pk) {
   const rows = [...bs.matchAll(/\n  UID (\S+): ([\d.]+)/g)].map(m => ({ app: pk.name(m[1]), mah: round(+m[2], 0) }));
   return rows.filter(r => r.mah >= 1).sort((a, b) => b.mah - a.mah).slice(0, 12);
 }
 
 const WAKE_GROUPS = [
-  ['Bluetooth', /uart|bluetooth|\bbt[_-]|hci/i], ['Mobile network', /modem|glink|qmi|rmnet|ipa\b|ipc_router|mhi/i],
+  ['Bluetooth', /uart|bluetooth|\bbt[_-]|hci/i], ['Mobile network', /modem|glink|qmi|rmnet|ipa\b|ipc_router|mhi|ccci|ccif/i],
   ['Wi-Fi', /wlan|wifi|wcnss|bcmdhd|cnss/i], ['Stylus', /epen|wacom|stylus/i],
-  ['App timers and alarms', /timerfd|rtc|alarm/i], ['Charger or USB', /usb|charg|pmic|typec/i],
+  // The power key is named after the power chip on many phones ("pmic_pwrkey"), so it is matched before the charger.
+  ['App timers and alarms', /timerfd|rtc|alarm/i], ['Power button', /pwrkey|power[-_]?key/i], ['Charger or USB', /usb|charg|pmic|typec/i],
   ['Fingerprint or touch', /fingerprint|fpc|touch|goodix/i], ['Sensors', /sensor|ssc|adsp|slpi/i],
 ];
 function wakeups(bs) {
@@ -259,7 +275,7 @@ function btScans(bt, year, from, to) {
   const ts = s => { const m = /(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/.exec(s); const at = y => Date.UTC(y, +m[1] - 1, +m[2], +m[3], +m[4], +m[5]) / 1000; return to != null && at(year) > to + 30 * 86400 ? at(year - 1) : at(year); };
   for (const m of bt.matchAll(/AppRecord\((\d\d-\d\d [\d:.]+) ~ (\d\d-\d\d [\d:.]+), id=\d+, appName=(\S+?)(?:\[|,)/g)) {
     const a = Math.max(ts(m[1]), from ?? -Infinity), b = Math.min(ts(m[2]), to ?? Infinity);
-    if (b > a) tot.set(m[3], (tot.get(m[3]) || 0) + b - a);
+    if (b > a && m[3].includes('.')) tot.set(m[3], (tot.get(m[3]) || 0) + b - a);   // a name without a dot is a system tag, not an app
   }
   return [...tot].map(([app, s]) => ({ app, hours: round(s / HOUR) })).filter(r => r.hours >= 0.2).sort((a, b) => b.hours - a.hours).slice(0, 8);
 }
@@ -313,7 +329,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
   else if (w?.dischargedScreenOnPct != null && w.screenOnHours >= 0.5) active = { pctPerHour: round(w.dischargedScreenOnPct / w.screenOnHours, 1), ma: null, hours: w.screenOnHours };
 
   return {
-    version: 5, takenAt, device: device(read), battery: b, window: w,
+    version: 6, takenAt, device: device(read), battery: b, window: w,
     rebootedInWindow: upHours != null && w ? upHours < w.hoursOnBattery - 0.2 : null, uptimeHours: round(upHours),
     hoursPerCharge: w?.dischargedPct >= 5 ? round(w.hoursOnBattery / w.dischargedPct * 100) : null,
     idle, active,
@@ -322,6 +338,7 @@ export function summarize(rawDir, takenAt = new Date().toISOString()) {
     estimatedApps: safe(() => estimatedApps(bs, pk)) || [],
     wakeups: safe(() => wakeups(bs)) || [],
     usage: safe(() => usage(read('usagestats.txt'))),
+    backgroundServices: safe(() => services(bs, pk)),
     alarms: safe(() => alarms(read('alarm.txt'), upHours)) || [],
     btScans: safe(() => { const from = w?.startedAt ? Date.parse(w.startedAt + 'Z') / 1000 : null; return btScans(read('bt.txt'), year, from, from != null ? from + w.hoursOnBattery * HOUR : null); }) || [],
     sensors: safe(() => sensors(read('sensor.txt'), pk)) || [],

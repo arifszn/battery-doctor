@@ -52,6 +52,12 @@ export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hou
   Wakeup reason 265 hs_uart_wakeup: 20m 0s 0ms (900 times) realtime
   Wakeup reason Abort: Pending Wakeup Sources: [timerfd]: 10m 0s 0ms (400 times) realtime
   Wakeup reason -1 IRQ 431, glink-native-modem: 1m 0s 0ms (50 times) realtime
+  Wakeup reason 353 pmic_pwrkey: 30m 0s 0ms (12 times) realtime
+
+  u0a202:
+    Foreground services: ${d(hours - 1)} realtime (1 times)
+  u0a233:
+    Foreground services: ${d(hours)} realtime (3 times)
 
 `;
   const ev = (h, m, type, pkg) => `    time="2026-11-03 ${pad(h)}:${pad(m)}:00" type=${type}${pkg ? ` package=${pkg}` : ''}`;
@@ -68,7 +74,7 @@ export function fakeDumps({ style = 'samsung', idleMa = 150, activeMa = 500, hou
     'usagestats.txt': usage + '\n',
     'alarm.txt': 'Current Alarm Manager state:\n  Alarm Stats:\n  u0a202:com.example.tracker +4m0s0ms running, 900 wakeups:\n    +4m0s0ms 900 wakes 900 alarms\n  1000:android +1m0s0ms running, 300 wakeups:\n',
     'sensor.txt': 'Sensor List:\nConnection Number: 0 \n\tOperating Mode: NORMAL\n \n\t com.example.tracker.Listener | WakeLockRefCount 0 | uid 10202 | cache size 0 | max cache size 0 | has sensor access: true\n\t accel Accelerometer Non-wakeup 0x0000000b | first flush pending: false | pending flush events 0 \n\t\tSession Start: 08:00:00 | Active Duration: 09:30:00 | Suspended Duration: 00:00:00\n',
-    'bt.txt': 'Bluetooth Status\n  Uptime:        30h 0m 0s\n         AppRecord(11-03 08:00:00.000 ~ 11-03 17:00:00.000, id=5, appName=com.example.tracker, LE, reason=REASON_UNREGISTER_CLIENT)\n',
+    'bt.txt': 'Bluetooth Status\n  Uptime:        30h 0m 0s\n         AppRecord(11-03 08:00:00.000 ~ 11-03 17:00:00.000, id=5, appName=com.example.tracker, LE, reason=REASON_UNREGISTER_CLIENT)\n         AppRecord(11-03 08:00:00.000 ~ 11-03 17:00:00.000, id=6, appName=BatteryService, LE, tag=BatteryService, reason=REASON_UNREGISTER_CLIENT)\n',
     'loc.txt': 'Location Manager State:\n        10202/com.example.tracker/AB12CD34 Request[HIGH_ACCURACY, minUpdateInterval=0]\n        10233/com.google.android.gms/90F1A84E Request[PASSIVE, minUpdateInterval=0]\n',
     'packages.txt': 'package:com.example.video uid:10201\npackage:com.example.tracker uid:10202\npackage:com.example.chat uid:10203\npackage:com.google.android.gms uid:10233\n',
     'packages3.txt': 'package:com.example.video\npackage:com.example.tracker\npackage:com.example.chat\n',

@@ -51,7 +51,7 @@ export function phoneChanges(prev, cur, log, app = p => p) {
     for (const p of diff(C.background, P.background)) if (!touched.has(p)) out.push({ key: `background:${p}:on`, target: p, text: `${app(p)} was stopped from running in the background` });
     for (const p of diff(P.background, C.background)) if (!touched.has(p)) out.push({ key: `background:${p}:off`, target: p, text: `${app(p)} was allowed to run in the background again` });
     // Android moves rarely used apps in and out of the restricted group by itself: only apps that show up in the battery figures count
-    const seen = new Set([prev, cur].flatMap(s => [...(s.screenApps || []), ...(s.estimatedApps || []), ...(s.alarms || []), ...(s.btScans || []), ...(s.usage?.foregroundServices || []), ...(s.sensors || []), ...(s.location || [])].map(x => x.app)));
+    const seen = new Set([prev, cur].flatMap(s => [...(s.screenApps || []), ...(s.estimatedApps || []), ...(s.alarms || []), ...(s.btScans || []), ...(s.usage?.foregroundServices || []), ...(s.backgroundServices || []), ...(s.sensors || []), ...(s.location || [])].map(x => x.app)));
     for (const p of diff(C.restricted, P.restricted).filter(p => seen.has(p))) out.push({ key: `restricted:${p}:on`, target: p, text: `${app(p)} was put in deep sleep, or restricted by Android as rarely used` });
     for (const p of diff(P.restricted, C.restricted).filter(p => seen.has(p))) out.push({ key: `restricted:${p}:off`, target: p, text: `${app(p)} was taken out of deep sleep or the restricted group` });
   }

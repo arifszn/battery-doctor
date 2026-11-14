@@ -75,6 +75,7 @@ Then write `plan.json` (format in `battery-doctor/references/report.md`): what t
 - "Apply fix F1" (a number from the report; its copy button adds the fix's title in brackets): run `fixes` to see what that number is in the latest checkup. If the title differs, the report is older than the latest checkup: say so and go by the `fixes` list. Confirm that exact change with the user (Rule 2), then follow Step 4.
 - "What's next?" or "What were we doing?": run `plan`.
 - "Is it better?": run `check` if the last checkup is older than the last change, otherwise read the comparison from the last `check`.
+- "Is it better than before I changed X?", or any two checkups the user names: run `compare` to list the checkups, then `compare <before> <after>` with two ids from that list. Pick the last checkup taken before the change as `<before>`.
 
 ## Reference files
 

@@ -227,7 +227,7 @@ test('a checkup saved by an older version is read again from its raw dumps', () 
   const { offByHour, restrictions, ...old } = JSON.parse(fs.readFileSync(file, 'utf8'));
   fs.writeFileSync(file, JSON.stringify({ ...old, version: 1 }));
   assert.ok(reportData(dir).checkups[0].offByHour);
-  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 5);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 6);
 });
 
 test('apply without --yes changes nothing and exits with an error', () => {
@@ -361,4 +361,46 @@ test('battery health falls back to the capacity Android learned when the charge 
   assert.equal(s.battery.healthSource, 'learned');
   d['batterystats.txt'] = d['batterystats.txt'].replace('Last learned battery capacity: 4910', 'Last learned battery capacity: 1000');
   assert.equal(summarize(writeDumps(tmpDir(), d), AT).battery.healthPct, null);   // a placeholder is not a measurement
+});
+
+test('an app that runs all day is found from the whole period, also when its service started before the usage records', () => {
+  const d = fakeDumps();
+  d['usagestats.txt'] = d['usagestats.txt'].split('\n').filter(l => !l.includes('FOREGROUND_SERVICE_START')).join('\n');
+  const s = summarize(writeDumps(tmpDir(), d), AT);
+  assert.deepEqual(s.usage.foregroundServices, []);
+  assert.equal(s.backgroundServices[0].app, 'com.google.android.gms');     // listed, but only installed apps are flagged
+  const f = evaluate(s).filter(x => x.id.startsWith('always-running:'));
+  assert.deepEqual(f.map(x => x.id), ['always-running:com.example.tracker']);
+  assert.match(f[0].detail, /9 h of the 10 h in this checkup/);
+  // a phone that does not report it falls back to the last 24 h of usage records, and the app is flagged once
+  const old = fakeDumps();
+  old['batterystats.txt'] = old['batterystats.txt'].replace(/\n\s+Foreground services: [^\n]+/g, '');
+  const o = summarize(writeDumps(tmpDir(), old), AT);
+  assert.equal(o.backgroundServices, null);
+  assert.match(evaluate(o).find(x => x.id === 'always-running:com.example.tracker').detail, /in the last 24 h/);
+  assert.equal(evaluate(summarize(writeDumps(tmpDir(), fakeDumps()), AT)).filter(x => x.id.startsWith('always-running:')).length, 1);
+});
+
+test('the power button is not counted as the charger, and a system tag is not listed as a Bluetooth scanning app', () => {
+  const s = summarize(writeDumps(tmpDir(), fakeDumps()), AT);
+  assert.equal(s.wakeups.find(g => g.source === 'Power button').count, 12);
+  assert.equal(s.wakeups.find(g => g.source === 'Charger or USB'), undefined);
+  assert.ok(!evaluate(s).find(f => f.id === 'frequent-wakeups').title.includes('power'));
+  assert.deepEqual(s.btScans.map(b => b.app), ['com.example.tracker']);
+});
+
+test('compare lists the saved checkups and compares any two of them', () => {
+  const dir = path.join(home, 'compare-phone');
+  seed(dir, '2026-11-03T18-00-00', { idleMa: 150 });
+  seed(dir, '2026-11-04T08-30-00', { style: 'aosp', hours: 0.5, screenOnHours: 0.25, start: '2026-11-04-08-00-00' });   // too short for an idle figure
+  seed(dir, '2026-11-05T18-00-00', { idleMa: 60, start: '2026-11-05-08-00-00' });
+  const doctor = (...a) => spawnSync(process.execPath, [path.join(scripts, 'doctor.mjs'), 'compare', ...a, `--dir=${dir}`], { encoding: 'utf8', env: { ...process.env, ADB: 'no-such-adb' } });
+  const list = doctor().stdout;
+  assert.match(list, /2026-11-03T18-00-00: period from 2026-11-03 08:00:00, 10 h on battery, idle drain 3% per hour/);
+  assert.match(list, /2026-11-04T08-30-00: .*idle drain not measured/);
+  const r = doctor('2026-11-03T18-00-00', '2026-11-05T18-00-00');
+  assert.match(r.stdout, /Idle drain: 3% -> 1.2% per hour \(-60%\)/);
+  assert.match(r.stdout, /Same hours of the day/);
+  assert.equal(doctor('2026-11-03T18-00-00', '2026-11-04T08-30-00').status, 1);
+  assert.equal(doctor('2026-11-03T18-00-00', 'nope').status, 1);
 });

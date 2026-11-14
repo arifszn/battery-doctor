@@ -532,9 +532,9 @@ function detailBody() {
   const c = cs[sel], w = c.window || {}, off = w.screenOffHours || 0, b = c.battery || {}, d = c.device || {};
   const apps = (c.screenApps || []).slice(0, 6).map(a => ({ label: app(a.app), title: a.app, figure: `${a.mah.toLocaleString('en')} mAh`, note: `${a.minutes} min` }));
   const est = !apps.length ? (c.estimatedApps || []).filter(a => a.app !== 'android' && a.app !== 'kernel').slice(0, 6).map(a => ({ label: app(a.app), title: a.app, figure: `${a.mah.toLocaleString('en')} mAh` })) : [];
-  const wake = (c.wakeups || []).filter(g => g.source !== 'Charger or USB').slice(0, 6).map(g => ({ label: g.source, figure: g.count.toLocaleString('en'), note: 'times' }));
+  const wake = (c.wakeups || []).filter(g => g.source !== 'Charger or USB' && g.source !== 'Power button').slice(0, 6).map(g => ({ label: g.source, figure: g.count.toLocaleString('en'), note: 'times' }));
   const bg = [
-    ...(c.usage?.foregroundServices || []).map(f => ({ label: app(f.app), title: f.app, v: f.hours, figure: `${n1(f.hours)} h`, sub: 'Running in the background' })),
+    ...(c.backgroundServices || c.usage?.foregroundServices || []).map(f => ({ label: app(f.app), title: f.app, v: f.hours, figure: `${n1(f.hours)} h`, sub: 'Running in the background' })),
     ...(c.btScans || []).map(x => ({ label: app(x.app), title: x.app, v: x.hours, figure: `${n1(x.hours)} h`, sub: 'Scanning Bluetooth' })),
   ].sort((a, b) => b.v - a.v).slice(0, 6);
   lvHost = h('div.lv');

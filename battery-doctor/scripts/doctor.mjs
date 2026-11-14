@@ -6,6 +6,7 @@
 //   node doctor.mjs check             take a checkup, print the summary, build the report
 //   node doctor.mjs report            rebuild the HTML report from saved checkups
 //   node doctor.mjs fixes             list the numbered fixes (F1, F2, ...) of the latest checkup
+//   node doctor.mjs compare [<before> <after>]   list the saved checkups, or compare two of them
 //   node doctor.mjs apply <action> <target> --yes     make one confirmed change
 //   node doctor.mjs note "<text>"      record a change the user made by hand, so the report marks it
 //   node doctor.mjs undo <id|all>     reverse a change
@@ -54,13 +55,28 @@ function deviceDir(bin, serial) {
 }
 
 const pct = n => (n == null ? 'unknown' : `${n}%`);
+// Two checkups side by side. `prev` is the earlier one.
+function printComparison(prev, s) {
+  const w = s.window;
+  const a = screenTime(prev), b2 = screenTime(s);
+  const diff = Math.round((s.idle.pctPerHour - prev.idle.pctPerHour) / prev.idle.pctPerHour * 100);
+  say(`\n## Compared with the checkup on ${prev.takenAt.slice(0, 10)}`);
+  if (a != null && b2 != null) say(`- Screen time from a full charge: ${a} h -> ${b2} h`);
+  say(`- Idle drain: ${prev.idle.pctPerHour}% -> ${s.idle.pctPerHour}% per hour (${diff > 0 ? '+' : ''}${diff}%)`);
+  if (prev.hoursPerCharge && s.hoursPerCharge) say(`- Hours per charge: ${prev.hoursPerCharge} -> ${s.hoursPerCharge}`);
+  say(`- Screen-off hours compared: ${prev.window?.screenOffHours} then, ${w?.screenOffHours} now. A period with a night in it idles lower than a daytime one.`);
+  const same = sameHours(prev, s);
+  if (same) say(`- Same hours of the day (${same.label}; ${same.offBefore} h and ${same.offAfter} h with the screen off): idle drain ${same.before}% -> ${same.after}% per hour. This is the like-for-like figure.`);
+  else say('- Same hours of the day: too little screen-off time in the same hours of both checkups to compare them like for like.');
+}
+
 function printSummary(s, flagsList, q, prev) {
   const d = s.device, b = s.battery, w = s.window;
   say(`# Checkup ${s.takenAt.slice(0, 16).replace('T', ' ')} UTC`);
   say(`Phone: ${[d.manufacturer, d.model].filter(Boolean).join(' ') || 'unknown'}, Android ${d.android ?? '?'}`);
   say(`Battery: ${pct(b.levelPct)} now, health ${pct(b.healthPct)}${b.healthSource ? ` (${b.healthSource})` : ''}, ${b.temperatureC ?? '?'} °C`);
   if (w) {
-    say(`\n## Since the last full charge (${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' + (w.startFrom === 'history' ? ', the earliest time in the phone\'s history because its clock was set again later' : '') : 'start unknown'})`);
+    say(`\n## This period (since ${w.startedAt ? w.startedAt.replace('T', ' ') + ' phone time' + (w.startFrom === 'history' ? ', the earliest time in the phone\'s history because its clock was set again later' : '') : 'an unknown time'}, when the phone last started its battery record)`);
     say(`- On battery ${w.hoursOnBattery} h, used ${pct(w.dischargedPct)}: screen on ${w.screenOnHours} h, screen off ${w.screenOffHours} h`);
     const st = screenTime(s);
     if (st != null) say(`- Screen time from a full charge: about ${st} h (this period: ${w.screenOnHours} h of screen, ${pct(w.dischargedPct)} of the battery used, idle time included)`);
@@ -70,22 +86,12 @@ function printSummary(s, flagsList, q, prev) {
     say(`- Sleep: deep ${w.deepDozeHours} h, light ${w.lightDozeHours} h, awake ${pct(w.awakeWhileOffPct)} of screen-off time`);
   }
   if (!q.ok) { say('\n## NOT ENOUGH DATA'); q.reasons.forEach(r => say(`- ${r}`)); }
-  if (prev?.idle && s.idle) {
-    const a = screenTime(prev), b2 = screenTime(s);
-    const diff = Math.round((s.idle.pctPerHour - prev.idle.pctPerHour) / prev.idle.pctPerHour * 100);
-    say(`\n## Compared with the checkup on ${prev.takenAt.slice(0, 10)}`);
-    if (a != null && b2 != null) say(`- Screen time from a full charge: ${a} h -> ${b2} h`);
-    say(`- Idle drain: ${prev.idle.pctPerHour}% -> ${s.idle.pctPerHour}% per hour (${diff > 0 ? '+' : ''}${diff}%)`);
-    if (prev.hoursPerCharge && s.hoursPerCharge) say(`- Hours per charge: ${prev.hoursPerCharge} -> ${s.hoursPerCharge}`);
-    say(`- Screen-off hours compared: ${prev.window?.screenOffHours} then, ${w?.screenOffHours} now. A period with a night in it idles lower than a daytime one.`);
-    const same = sameHours(prev, s);
-    if (same) say(`- Same hours of the day (${same.label}; ${same.offBefore} h and ${same.offAfter} h with the screen off): idle drain ${same.before}% -> ${same.after}% per hour. This is the like-for-like figure.`);
-    else say('- Same hours of the day: too little screen-off time in the same hours of both checkups to compare them like for like.');
-  }
+  if (prev?.idle && s.idle) printComparison(prev, s);
   const list = (title, rows, f) => { if (rows?.length) { say(`\n## ${title}`); rows.forEach(r => say(`- ${f(r)}`)); } };
   list('Battery used on screen, by app', s.screenApps?.slice(0, 6), a => `${a.app}: ${a.minutes} min, ${a.mah} mAh`);
   if (!s.screenApps) list('Battery used by app (Android estimate)', s.estimatedApps.slice(0, 6), a => `${a.app}: ${a.mah} mAh`);
-  list('What wakes the phone', s.wakeups.slice(0, 6), g => `${g.source}: ${g.count} times`);
+  list('What wakes the phone', s.wakeups.filter(g => g.source !== 'Power button').slice(0, 6), g => `${g.source}: ${g.count} times`);
+  list('App timers by app, since the last restart', s.alarms?.slice(0, 5), a => `${a.app}: ${a.wakeups} wakeups${a.perHour != null ? `, about ${a.perHour} per hour` : ''}`);
   say(`\n## Problems found (${flagsList.length})`);
   if (!flagsList.length) say('- None above the thresholds.');
   const num = new Map(fixList(flagsList).map(x => [x.id, x.n]));   // same numbering as the report
@@ -164,7 +170,7 @@ const commands = {
     const same = before.filter(c => s.window?.startedAt && c.summary.window?.startedAt === s.window.startedAt).pop()?.summary;
     const last = before[before.length - 1]?.summary;
     const found = last ? recordPhoneChanges(dir, phoneChanges(last, s, readLog(dir)), s.takenAt) : [];
-    printSummary(s, fl, q, before.filter(c => c.summary.window?.startedAt !== s.window?.startedAt).pop()?.summary);
+    printSummary(s, fl, q, before.filter(c => c.summary.window?.startedAt !== s.window?.startedAt && c.summary.idle).pop()?.summary);   // a checkup without an idle figure is no baseline
     if (found.length) {
       say(`\n## CHANGED ON THE PHONE since the checkup on ${last.takenAt.slice(0, 16).replace('T', ' ')} UTC (not by this tool)`);
       found.forEach(e => say(`- ${e.target} (logged as change ${e.id})`));
@@ -182,6 +188,17 @@ const commands = {
     const out = buildReport(pickDir());
     say(`report: ${out}`);
     if (!flags.has('--no-open')) openInBrowser(out);
+  },
+
+  compare() {
+    const all = loadCheckups(pickDir());
+    if (!all.length) fail('No checkups yet. Run "node doctor.mjs check" first.');
+    const row = c => { const w = c.summary.window; return `${c.id}: ${w ? `period from ${(w.startedAt || 'unknown').replace('T', ' ')}, ${w.hoursOnBattery} h on battery` : 'no battery record'}, idle drain ${c.summary.idle ? c.summary.idle.pctPerHour + '% per hour' : 'not measured'}`; };
+    if (args.length !== 2) { say('# Saved checkups (id: period, idle drain)'); all.forEach(c => say(`- ${row(c)}`)); return say('\ncompare two with: node doctor.mjs compare <before id> <after id>'); }
+    const [a, b] = args.map(id => all.find(c => c.id === id) || fail(`No checkup "${id}". Run "node doctor.mjs compare" to list the ids.`));
+    if (!a.summary.idle || !b.summary.idle) fail('One of these checkups has no idle drain figure, so there is nothing to compare.');
+    say(`# Before: ${row(a)}\n# After: ${row(b)}`);
+    printComparison(a.summary, b.summary);
   },
 
   fixes() {
@@ -245,5 +262,5 @@ const commands = {
   },
 };
 
-if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 13).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
+if (!commands[cmd]) { say(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 14).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
 try { await commands[cmd](); } catch (e) { fail(e.message); }
